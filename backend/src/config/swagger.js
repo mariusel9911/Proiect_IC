@@ -14,7 +14,7 @@ const options = {
             description: 'API for managing animal shelter operations and user authentication',
             contact: {
                 name: "API Support",
-                email: "support@animalshelter.com"
+                email: "support@clingoapp.com"
             }
         },
         servers: [
