@@ -62,7 +62,7 @@ const HomePage = () => {
           <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">My very special address...</div>
           <button
               onClick={handleLogout}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+              className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
           >
             Logout
           </button>
@@ -79,7 +79,7 @@ const HomePage = () => {
         <div className="relative w-[90vw] md:w-[80vw] max-w-6xl h-[400px] md:h-[600px] bg-white rounded-3xl shadow-2xl flex items-center justify-center">
           {/* Centered container for the circles - responsive width and left margin */}
           <div
-            className={`relative flex items-center justify-center ${containerMargin}`}
+              className={`relative flex items-center justify-center ${containerMargin} mt-[50px] md:mt-[-100px]`}
             style={{
               width: `${containerWidth}px`,
               height: `${containerWidth}px`,
@@ -118,16 +118,32 @@ const HomePage = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full p-4 md:p-8 bg-white/80 backdrop-blur-sm text-center rounded-t-3xl shadow-lg flex flex-col items-center">
-        <div className="w-48 md:w-72 h-3 md:h-4 bg-gradient-to-r from-blue-500 to-purple-500 mb-4 md:mb-6 rounded-full shadow"></div>
-        <Link
-          to="/login"
-          className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
-        >
-          <ArrowLeft className="mr-2" /> Back to Login
-        </Link>
-      </footer>
+      <div className="relative w-full">
+        {/* SVG Arch */}
+        <div className="absolute top-[-70px] left-0 w-full h-[100px] overflow-hidden z-10">
+          <svg
+              className="w-full h-full"
+              viewBox="0 0 1440 320"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="none"
+          >
+            <path
+                fill="white"
+                d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
+            />
+          </svg>
+        </div>
+
+        {/* Footer */}
+        <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[60px] rounded-t-[30px]">
+          <Link
+              to="/login"
+              className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
+          >
+            <ArrowLeft className="mr-2" /> Back to Login
+          </Link>
+        </footer>
+      </div>
     </div>
   );
 };
