@@ -77,7 +77,7 @@ export const PASSWORD_RESET_SUCCESS_TEMPLATE = `
           <li style="margin-bottom: 8px;">Avoid using the same password across multiple sites</li>
         </ul>
         <p style="margin: 0 0 16px 0;">Thank you for helping us keep your account secure.</p>
-        <p style="margin: 0;">Best regards,<br>Animal Shelter Team</p>
+        <p style="margin: 0;">Best regards,<br>Clingo Team</p>
       </td>
     </tr>
   </table>
