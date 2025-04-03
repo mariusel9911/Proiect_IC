@@ -9,12 +9,12 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Animal Shelter API',
+            title: 'Clingo API',
             version: '1.0.0',
-            description: 'API for managing animal shelter operations and user authentication',
+            description: 'API for managing user authentication',
             contact: {
                 name: "API Support",
-                email: "support@animalshelter.com"
+                email: "support@clingoapp.com"
             }
         },
         servers: [
