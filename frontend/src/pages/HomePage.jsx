@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react'
 import ServiceCircle from "../components/ServiceCircle";
+import SearchBar from "../components/SearchBar";
 
 const HomePage = () => {
   const { user, logout } = useAuthStore();
@@ -52,22 +53,25 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col items-center justify-between">
-      {/* Header */}
-      <header className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-between items-center px-4 md:px-12 sticky top-0 z-50">
-        <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-1/2 p-2 md:p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-        />
-        <button
-          onClick={handleLogout}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
-        >
-          Logout
-        </button>
-      </header>
+
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex-col items-center justify-between">
+
+      <div className={"w-full bg-white flex flex-col"}>
+        <div className={"w-full p-3 bg-white shadow-lg flex justify-center items-center"}>
+          <div className="w-10 h-10 md:w-14 md:h-14  bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">My very special address...</div>
+          <button
+              onClick={handleLogout}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-50">
+          <SearchBar placeholder="Search..."/>
+        </div>
+      </div>
 
       {/* Flower Layout */}
       <main className="flex-grow flex items-center justify-center w-full h-[600px] md:h-[800px]">
