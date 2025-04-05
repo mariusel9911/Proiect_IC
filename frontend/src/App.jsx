@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import LoadingSpinner from './components/LoadingSpinner';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ServicePage from './pages/ServicePage';
 
 //protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -97,6 +98,7 @@ function App() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/service/:id" element={<ServicePage />} />
       </Routes>
       <Toaster />
     </div>
