@@ -4,6 +4,9 @@ import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
+import CleaningServicePage from './pages/CleaningServicePage';
+import RequestPage from './pages/RequestPage';
+import ServicePage from './pages/ServicePage';
 
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -11,11 +14,11 @@ import { useEffect } from 'react';
 import LoadingSpinner from './components/LoadingSpinner';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-import ServicePage from './pages/ServicePage';
 
 //protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -49,59 +52,84 @@ function App() {
 
   console.log('isAuthenticated', isAuthenticated);
   console.log('user', user);
-  return (
-    <div
-      className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative
-         overflow-hidden"
-    >
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <RedirectAuthenticatedUser>
-              <SignUpPage />
-            </RedirectAuthenticatedUser>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <RedirectAuthenticatedUser>
-              <LoginPage />
-            </RedirectAuthenticatedUser>
-          }
-        />
-        <Route path="/verify-email" element={<EmailVerificationPage />} />
-        <Route
-          path="/forgot-password"
-          element={
-            <RedirectAuthenticatedUser>
-              <ForgotPasswordPage />
-            </RedirectAuthenticatedUser>
-          }
-        />
-        <Route
-          path="/reset-password/:token"
-          element={
-            <RedirectAuthenticatedUser>
-              <ResetPasswordPage />
-            </RedirectAuthenticatedUser>
-          }
-        />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/service/:id" element={<ServicePage />} />
-      </Routes>
-      <Toaster />
-    </div>
+  return (
+      <div
+          className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative overflow-hidden"
+      >
+        <Routes>
+          <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              }
+          />
+          <Route
+              path="/signup"
+              element={
+                <RedirectAuthenticatedUser>
+                  <SignUpPage />
+                </RedirectAuthenticatedUser>
+              }
+          />
+          <Route
+              path="/login"
+              element={
+                <RedirectAuthenticatedUser>
+                  <LoginPage />
+                </RedirectAuthenticatedUser>
+              }
+          />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
+          <Route
+              path="/forgot-password"
+              element={
+                <RedirectAuthenticatedUser>
+                  <ForgotPasswordPage />
+                </RedirectAuthenticatedUser>
+              }
+          />
+          <Route
+              path="/reset-password/:token"
+              element={
+                <RedirectAuthenticatedUser>
+                  <ResetPasswordPage />
+                </RedirectAuthenticatedUser>
+              }
+          />
+
+          {/* Service Routes */}
+          <Route
+              path="/service/:serviceId"
+              element={
+                <ProtectedRoute>
+                  <ServicePage />
+                </ProtectedRoute>
+              }
+          />
+          <Route
+              path="/cleaning/:serviceId"
+              element={
+                <ProtectedRoute>
+                  <CleaningServicePage />
+                </ProtectedRoute>
+              }
+          />
+          <Route
+              path="/request"
+              element={
+                <ProtectedRoute>
+                  <RequestPage />
+                </ProtectedRoute>
+              }
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Toaster />
+      </div>
   );
 }
 
