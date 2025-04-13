@@ -292,14 +292,32 @@ const CheckoutPage = () => {
         </div>
       </main>
 
-      <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center mt-8">
-        <Link
-          to={`/cleaning/${serviceId}`}
-          className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
-        >
-          <ArrowLeft className="mr-2" /> Back to Service
-        </Link>
-      </footer>
+
+      <div className="relative w-full">
+        <div className="relative top left-0 w-full h-[100px] overflow-hidden z-10">
+          <svg
+              className="w-full h-full"
+              viewBox="0 0 1440 320"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="none"
+          >
+            <path
+                fill="white"
+                d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
+            />
+          </svg>
+        </div>
+
+        <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center">
+          <Link
+              to={`/cleaning/${serviceId}`}
+              className="text-blue-600 flex items-center justify-center mt-[-20px] text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
+          >
+            <ArrowLeft className="mr-2" /> Back to Service
+          </Link>
+        </footer>
+      </div>
+
     </div>
   );
 };

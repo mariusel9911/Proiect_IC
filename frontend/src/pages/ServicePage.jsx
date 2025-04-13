@@ -243,7 +243,7 @@ const ServicePage = () => {
         </main>
 
         <div className="relative w-full">
-          <div className="absolute top-[-70px] left-0 w-full h-[100px] overflow-hidden z-10">
+          <div className="absolute top-[-10px] left-0 w-full h-[100px] overflow-hidden z-10">
             <svg
                 className="w-full h-full"
                 viewBox="0 0 1440 320"
