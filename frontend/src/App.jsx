@@ -1,11 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import CleaningServicePage from './pages/CleaningServicePage';
-import RequestPage from './pages/RequestPage';
+import CheckoutPage from './pages/CheckoutPage';
 import ServicePage from './pages/ServicePage';
 
 import { Toaster } from 'react-hot-toast';
@@ -15,7 +14,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
-//protect routes that require authentication
+// Protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -30,7 +29,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// redirect authenticated user to the home page
+// Redirect authenticated user to the home page
 const RedirectAuthenticatedUser = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -54,82 +53,80 @@ function App() {
   console.log('user', user);
 
   return (
-      <div
-          className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative overflow-hidden"
-      >
-        <Routes>
-          <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <HomePage />
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/signup"
-              element={
-                <RedirectAuthenticatedUser>
-                  <SignUpPage />
-                </RedirectAuthenticatedUser>
-              }
-          />
-          <Route
-              path="/login"
-              element={
-                <RedirectAuthenticatedUser>
-                  <LoginPage />
-                </RedirectAuthenticatedUser>
-              }
-          />
-          <Route path="/verify-email" element={<EmailVerificationPage />} />
-          <Route
-              path="/forgot-password"
-              element={
-                <RedirectAuthenticatedUser>
-                  <ForgotPasswordPage />
-                </RedirectAuthenticatedUser>
-              }
-          />
-          <Route
-              path="/reset-password/:token"
-              element={
-                <RedirectAuthenticatedUser>
-                  <ResetPasswordPage />
-                </RedirectAuthenticatedUser>
-              }
-          />
+    <div className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative overflow-hidden">
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <RedirectAuthenticatedUser>
+              <SignUpPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <RedirectAuthenticatedUser>
+              <LoginPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
+        <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route
+          path="/forgot-password"
+          element={
+            <RedirectAuthenticatedUser>
+              <ForgotPasswordPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <RedirectAuthenticatedUser>
+              <ResetPasswordPage />
+            </RedirectAuthenticatedUser>
+          }
+        />
 
-          {/* Service Routes */}
-          <Route
-              path="/service/:serviceId"
-              element={
-                <ProtectedRoute>
-                  <ServicePage />
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/cleaning/:serviceId"
-              element={
-                <ProtectedRoute>
-                  <CleaningServicePage />
-                </ProtectedRoute>
-              }
-          />
-          <Route
-              path="/request"
-              element={
-                <ProtectedRoute>
-                  <RequestPage />
-                </ProtectedRoute>
-              }
-          />
+        {/* Service Routes */}
+        <Route
+          path="/service/:serviceId"
+          element={
+            <ProtectedRoute>
+              <ServicePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cleaning/:serviceId"
+          element={
+            <ProtectedRoute>
+              <CleaningServicePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Toaster />
-      </div>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster />
+    </div>
   );
 }
 
