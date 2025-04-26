@@ -1,5 +1,5 @@
-import {motion} from "framer-motion";
-import {Link} from "react-router-dom";
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 const ServiceCircle = ({ service, index, total, baseRadius, screenWidth }) => {
     // Calculate responsive radius based on screen width
@@ -22,9 +22,12 @@ const ServiceCircle = ({ service, index, total, baseRadius, screenWidth }) => {
     const angle = 270 + (index * 360) / total;
     const radian = (angle * Math.PI) / 180;
 
+    // Get service ID (handle both MongoDB _id and regular id for compatibility)
+    const serviceId = service._id || service.id;
+
     return (
         <motion.div
-            key={service.id}
+            key={serviceId}
             className="absolute"
             style={{
                 left: `calc(50% + ${radius * Math.cos(radian)}px)`,
@@ -41,11 +44,11 @@ const ServiceCircle = ({ service, index, total, baseRadius, screenWidth }) => {
             }}
             whileHover={{ scale: 1.1 }}
         >
-            <Link to={`/service/${service.id}`}>
+            <Link to={`/service/${serviceId}`}>
                 <div
                     className={`${circleSize} rounded-full border-4 border-gray-100 bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors`}
                 >
-                    <p className="text-gray-700 font-semibold text-sm text-center">
+                    <p className="text-gray-700 font-semibold text-sm text-center px-2">
                         {service.name}
                     </p>
                 </div>

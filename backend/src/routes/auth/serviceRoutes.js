@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken } from '../middleware/verifyToken.js';
+import { verifyToken } from "../../middleware/verifyToken.js";
 import {
   getAllServices,
   getServiceById,
@@ -7,8 +7,8 @@ import {
   updateService,
   deleteService,
   searchServices,
-  seedServices,
-} from '../controllers/serviceController.js';
+  // seedServices,
+} from '../../controllers/serviceController.js';
 
 const router = express.Router();
 
@@ -23,6 +23,6 @@ router.put('/:serviceId', verifyToken, updateService);
 router.delete('/:serviceId', verifyToken, deleteService);
 
 // Development route for seeding data
-router.post('/seed', seedServices);
+// router.post('/seed', seedServices);
 
 export const serviceRoutes = router;

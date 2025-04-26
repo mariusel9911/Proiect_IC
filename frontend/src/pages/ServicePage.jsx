@@ -2,15 +2,24 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Tag, User, Building } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useServiceStore } from '../store/serviceStore';
+import { useProviderStore } from '../store/providerStore';
 import SearchBar from '../components/SearchBar';
+import LoadingSpinner from '../components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const ServicePage = () => {
   const { serviceId } = useParams();
   const { user, logout } = useAuthStore();
+  const { currentService, fetchServiceById, clearCurrentService, error: serviceError } = useServiceStore();
+  const {
+    providers,
+    fetchProvidersForService,
+    isLoading: providersLoading,
+    error: providersError
+  } = useProviderStore();
+
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [service, setService] = useState(null);
-  const [providers, setProviders] = useState([]);
   const [search, setSearch] = useState('');
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const [providerTypes, setProviderTypes] = useState([
@@ -30,91 +39,50 @@ const ServicePage = () => {
     };
   }, []);
 
+  // Fetch service data
   useEffect(() => {
-    setIsLoading(true);
+    fetchServiceById(serviceId);
+    fetchProvidersForService(serviceId);
 
-    const fetchServiceData = async () => {
-      try {
-        // Mock service data
-        const mockService = {
-          id: serviceId,
-          name: `Service ${serviceId}`,
-          description:
-              'This is a service description that provides detailed information about what the service offers.',
-        };
-
-        // Mock providers
-        const mockProviders = [
-          {
-            id: 1,
-            name: 'John Smith',
-            title: 'Professional Consultant',
-            description:
-                'Experienced professional with 10+ years in the industry',
-            price: 'FREE',
-            type: 'person',
-            rating: 4.8,
-            isPopular: true,
-            image: '/api/placeholder/80/80',
-          },
-          {
-            id: 2,
-            name: 'ABC Corporation',
-            title: 'Enterprise Solutions',
-            description:
-                'Leading company providing comprehensive business solutions',
-            price: 'FREE',
-            type: 'company',
-            rating: 4.5,
-            image: '/api/placeholder/80/80',
-          },
-        ];
-
-        setService(mockService);
-        setProviders(mockProviders);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching service data:', error);
-        setIsLoading(false);
-      }
+    // Cleanup function
+    return () => {
+      clearCurrentService();
     };
+  }, [serviceId, fetchServiceById, fetchProvidersForService, clearCurrentService]);
 
-    fetchServiceData();
-  }, [serviceId]);
+  // Handle errors
+  useEffect(() => {
+    if (serviceError) {
+      toast.error(`Service error: ${serviceError}`);
+    }
+    if (providersError) {
+      toast.error(`Provider error: ${providersError}`);
+    }
+  }, [serviceError, providersError]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+  };
+
   const filteredProviders = providers.filter((provider) => {
     const matchesSearch =
         provider.name.toLowerCase().includes(search.toLowerCase()) ||
-        provider.title.toLowerCase().includes(search.toLowerCase());
+        provider.title.toLowerCase().includes(search.toLowerCase()) ||
+        (provider.description && provider.description.toLowerCase().includes(search.toLowerCase()));
+
     const matchesType = selectedType ? provider.type === selectedType : true;
     return matchesSearch && matchesType;
   });
 
-  if (isLoading) {
+  if (!currentService) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
-          <div className="p-8 bg-white rounded-xl shadow-lg text-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-700">Loading service providers...</p>
-          </div>
-        </div>
-    );
-  }
-
-  if (!service) {
-    return (
-        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
-          <div className="p-8 bg-white rounded-xl shadow-lg text-center">
-            <p className="text-gray-700">Service not found</p>
-            <Link to="/" className="text-blue-600 mt-4 inline-block">
-              Return to Home
-            </Link>
-          </div>
+          <LoadingSpinner text="Loading service details..." />
         </div>
     );
   }
@@ -123,6 +91,12 @@ const ServicePage = () => {
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col items-center justify-between">
         <div className="w-full bg-white flex flex-col">
           <div className="w-full p-3 bg-white shadow-lg flex justify-center items-center">
+            <Link
+                to="/"
+                className="text-blue-600 flex items-center mr-4"
+            >
+              <ArrowLeft className="mr-1" /> Back
+            </Link>
             <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
             <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">
               My very special address...
@@ -139,7 +113,7 @@ const ServicePage = () => {
             <SearchBar
                 placeholder="Search providers..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={handleSearch}
             />
           </div>
         </div>
@@ -149,10 +123,20 @@ const ServicePage = () => {
             <div className="h-full flex flex-col">
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                  {service.name}
+                  {currentService.name}
                 </h1>
                 <div className="text-gray-600">
                   {filteredProviders.length} / {providers.length}
+                </div>
+              </div>
+
+              {/* Service description */}
+              <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-600">{currentService.description}</p>
+                <div className="mt-2">
+                <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                  {currentService.type}
+                </span>
                 </div>
               </div>
 
@@ -180,64 +164,70 @@ const ServicePage = () => {
                 ))}
               </div>
 
-              <div className="flex-grow overflow-y-auto pr-2">
-                <div className="flex flex-col gap-4">
-                  {filteredProviders.length > 0 ? (
-                      filteredProviders.map((provider) => (
-                          <Link
-                              to={`/cleaning/${service.id}`}
-                              key={provider.id}
-                              state={{ provider }}
-                          >
-                            <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer">
-                              <div className="p-4 md:p-6 flex flex-col relative">
-                                <h2 className="text-xl md:text-2xl font-semibold mb-2">
-                                  {provider.name}
-                                </h2>
-                                <div className="bg-gray-800 h-10 w-3/4 rounded mb-4">
-                                  <div className="text-white text-sm p-2 truncate">
-                                    {provider.title}
-                                  </div>
-                                </div>
+              {providersLoading ? (
+                  <div className="flex-grow flex items-center justify-center">
+                    <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+              ) : (
+                  <div className="flex-grow overflow-y-auto pr-2">
+                    <div className="flex flex-col gap-4">
+                      {filteredProviders.length > 0 ? (
+                          filteredProviders.map((provider) => (
+                              <Link
+                                  to={`/cleaning/${serviceId}`}
+                                  key={provider._id || provider.id}
+                                  state={{ provider, serviceId }}
+                              >
+                                <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer">
+                                  <div className="p-4 md:p-6 flex flex-col relative">
+                                    <h2 className="text-xl md:text-2xl font-semibold mb-2">
+                                      {provider.name}
+                                    </h2>
+                                    <div className="bg-gray-800 h-10 w-3/4 rounded mb-4">
+                                      <div className="text-white text-sm p-2 truncate">
+                                        {provider.title}
+                                      </div>
+                                    </div>
 
-                                <p className="text-gray-600 mb-4">
-                                  {provider.description}
-                                </p>
+                                    <p className="text-gray-600 mb-4">
+                                      {provider.description}
+                                    </p>
 
-                                <div className="flex justify-between items-center">
-                                  <div className="flex items-center">
-                                    {provider.isPopular && (
-                                        <div className="flex items-center text-blue-600 mr-4">
-                                          <Tag size={16} className="mr-1" />
-                                          <span className="text-sm font-medium">HOT</span>
+                                    <div className="flex justify-between items-center">
+                                      <div className="flex items-center">
+                                        {provider.isPopular && (
+                                            <div className="flex items-center text-blue-600 mr-4">
+                                              <Tag size={16} className="mr-1" />
+                                              <span className="text-sm font-medium">HOT</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center text-amber-500">
+                                  <span className="text-sm font-medium mr-1">
+                                    ★
+                                  </span>
+                                          <span className="text-sm text-gray-700">
+                                    {provider.rating || "New"}
+                                  </span>
                                         </div>
-                                    )}
-                                    <div className="flex items-center text-amber-500">
-                                <span className="text-sm font-medium mr-1">
-                                  ★
+                                      </div>
+                                      <div className="text-right">
+                                <span className="text-green-600 font-bold">
+                                  {provider.price || "FREE"}
                                 </span>
-                                      <span className="text-sm text-gray-700">
-                                  {provider.rating}
-                                </span>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                              <span className="text-green-600 font-bold">
-                                {provider.price}
-                              </span>
-                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </Link>
-                      ))
-                  ) : (
-                      <div className="text-center py-12 bg-white rounded-xl shadow-md">
-                        No providers found matching your criteria.
-                      </div>
-                  )}
-                </div>
-              </div>
+                              </Link>
+                          ))
+                      ) : (
+                          <div className="text-center py-12 bg-white rounded-xl shadow-md">
+                            No providers found matching your criteria.
+                          </div>
+                      )}
+                    </div>
+                  </div>
+              )}
             </div>
           </div>
         </main>
