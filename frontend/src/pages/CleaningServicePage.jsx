@@ -2,18 +2,35 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useServiceStore } from '../store/serviceStore';
+import { useCheckoutStore } from '../store/checkoutStore';
 import SearchBar from '../components/SearchBar';
+import LoadingSpinner from '../components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const CleaningServicePage = () => {
   const { serviceId } = useParams();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const {
+    currentService,
+    fetchServiceById,
+    isLoading: serviceLoading,
+    error: serviceError
+  } = useServiceStore();
+  const {
+    selectedOptions,
+    updateSelectedOption,
+    setSelectedService,
+    hasSelectedOptions
+  } = useCheckoutStore();
+
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [service, setService] = useState(null);
-  const [selectedOptions, setSelectedOptions] = useState({});
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const [view, setView] = useState('options'); // 'options' or 'request'
+
+  // Get provider from location state
+  const provider = location.state?.provider;
 
   useEffect(() => {
     const handleResize = () => {
@@ -29,76 +46,32 @@ const CleaningServicePage = () => {
   // Add this effect to check if all items are removed in preview mode
   useEffect(() => {
     // Only run this check when in 'request' view
-    if (view === 'request') {
-      // Check if any options are selected
-      const hasSelectedItems = Object.values(selectedOptions).some(quantity => quantity > 0);
-
-      // If no items are selected, redirect back to options view
-      if (!hasSelectedItems) {
-        setView('options');
-      }
+    if (view === 'request' && !hasSelectedOptions()) {
+      setView('options');
     }
-  }, [selectedOptions, view]);
+  }, [selectedOptions, view, hasSelectedOptions]);
 
+  // Fetch service data
   useEffect(() => {
-    setIsLoading(true);
+    // If the provider passed service info, use that
+    if (provider && provider.service) {
+      setSelectedService(provider.service);
+    } else {
+      // Otherwise fetch from API
+      fetchServiceById(serviceId).then(service => {
+        if (service) {
+          setSelectedService(service);
+        }
+      });
+    }
+  }, [serviceId, provider, fetchServiceById, setSelectedService]);
 
-    const fetchServiceData = async () => {
-      try {
-        // Get provider data from navigation state if available
-        const provider = location.state?.provider;
-
-        const mockService = {
-          id: serviceId,
-          name: provider?.name || 'Cleaning Service',
-          description:
-              provider?.description ||
-              'Professional cleaning service with various options',
-          type: 'DOMESTIC CLEANING',
-          price: provider?.price || 'FREE',
-          options: [
-            {
-              id: 1,
-              name: 'Bathroom Cleaning',
-              icon: '🛁',
-              price: '€25',
-              quantity: 0,
-            },
-            {
-              id: 2,
-              name: 'Kitchen Cleaning',
-              icon: '🍳',
-              price: '€30',
-              quantity: 0,
-            },
-            {
-              id: 3,
-              name: 'Living Room',
-              icon: '🛋️',
-              price: '€20',
-              quantity: 0,
-            },
-          ],
-        };
-
-        setService(mockService);
-
-        // Initialize selected options
-        const initialOptions = {};
-        mockService.options.forEach((option) => {
-          initialOptions[option.id] = 0;
-        });
-        setSelectedOptions(initialOptions);
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching service data:', error);
-        setIsLoading(false);
-      }
-    };
-
-    fetchServiceData();
-  }, [serviceId, location.state]);
+  // Handle errors
+  useEffect(() => {
+    if (serviceError) {
+      toast.error(`Error: ${serviceError}`);
+    }
+  }, [serviceError]);
 
   const handleLogout = () => {
     logout();
@@ -106,28 +79,19 @@ const CleaningServicePage = () => {
   };
 
   const handleIncrement = (optionId) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [optionId]: (prev[optionId] || 0) + 1,
-    }));
+    updateSelectedOption(optionId, (selectedOptions[optionId] || 0) + 1);
   };
 
   const handleDecrement = (optionId) => {
     if (selectedOptions[optionId] > 0) {
-      setSelectedOptions((prev) => ({
-        ...prev,
-        [optionId]: prev[optionId] - 1,
-      }));
+      updateSelectedOption(optionId, selectedOptions[optionId] - 1);
     }
   };
 
   const handleRequestService = () => {
-    const selectedItems = Object.entries(selectedOptions)
-        .filter(([_, quantity]) => quantity > 0)
-        .map(([id]) => parseInt(id));
-
-    if (selectedItems.length === 0) {
-      alert('Please select at least one cleaning option');
+    // Check if any options are selected
+    if (!hasSelectedOptions()) {
+      toast.error('Please select at least one cleaning option');
       return;
     }
 
@@ -140,7 +104,7 @@ const CleaningServicePage = () => {
       state: {
         serviceId,
         selectedOptions,
-        service,
+        service: currentService,
       },
     });
   };
@@ -150,38 +114,25 @@ const CleaningServicePage = () => {
   };
 
   const calculateTotal = () => {
-    if (!service) return 0;
+    if (!currentService) return 0;
 
-    return service.options.reduce((total, option) => {
-      const quantity = selectedOptions[option.id] || 0;
+    return (currentService.options || []).reduce((total, option) => {
+      const quantity = selectedOptions[option._id || option.id] || 0;
       const price = parseInt(option.price.replace('€', '')) || 0;
       return total + price * quantity;
     }, 0);
   };
 
-  if (isLoading) {
+  if (serviceLoading || !currentService) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
-          <div className="p-8 bg-white rounded-xl shadow-lg text-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-700">Loading service details...</p>
-          </div>
+          <LoadingSpinner text="Loading service details..." />
         </div>
     );
   }
 
-  if (!service) {
-    return (
-        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
-          <div className="p-8 bg-white rounded-xl shadow-lg text-center">
-            <p className="text-gray-700">Service not found</p>
-            <Link to="/" className="text-blue-600 mt-4 inline-block">
-              Return to Home
-            </Link>
-          </div>
-        </div>
-    );
-  }
+  const serviceName = provider?.name || currentService.name;
+  const serviceDescription = provider?.description || currentService.description;
 
   return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col items-center justify-between">
@@ -224,34 +175,42 @@ const CleaningServicePage = () => {
             <div className="h-full flex flex-col">
               <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                  {view === 'options' ? service.name : 'Review Request'}
+                  {view === 'options' ? serviceName : 'Review Request'}
                 </h1>
               </div>
 
               <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-600">{service.description}</p>
+                <p className="text-gray-600">{serviceDescription}</p>
                 <div className="flex justify-between items-center mt-4">
                 <span className="text-green-600 font-bold">
-                  {service.price}
+                  {provider?.price || currentService.price || 'FREE'}
                 </span>
-                  <div className="w-6 h-6 flex items-center justify-center">
-                    <span className="text-xl">❌</span>
-                  </div>
+                  {provider && (
+                      <div className="flex items-center">
+                        <span className="text-sm text-gray-600 mr-2">Provider Rating:</span>
+                        <div className="flex items-center text-amber-500">
+                          <span className="text-sm font-medium mr-1">★</span>
+                          <span className="text-sm text-gray-700">
+                        {provider.rating || "New"}
+                      </span>
+                        </div>
+                      </div>
+                  )}
                 </div>
               </div>
 
               <div className="text-center mb-4">
                 <h2 className="text-lg md:text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                  {service.type}
+                  {currentService.type}
                 </h2>
               </div>
 
               <div className="flex-grow overflow-y-auto pr-2">
                 <div className="flex flex-col gap-6">
                   {view === 'options'
-                      ? service.options.map((option) => (
+                      ? (currentService.options || []).map((option) => (
                           <div
-                              key={option.id}
+                              key={option._id || option.id}
                               className="flex items-center justify-between border-b border-gray-200 pb-4"
                           >
                             <div className="flex items-center">
@@ -269,16 +228,16 @@ const CleaningServicePage = () => {
                           </span>
                               <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handleDecrement(option.id)}
+                                    onClick={() => handleDecrement(option._id || option.id)}
                                     className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                                 >
                                   <Minus size={18} />
                                 </button>
                                 <span className="w-6 text-center">
-                              {selectedOptions[option.id] || 0}
+                              {selectedOptions[option._id || option.id] || 0}
                             </span>
                                 <button
-                                    onClick={() => handleIncrement(option.id)}
+                                    onClick={() => handleIncrement(option._id || option.id)}
                                     className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                                 >
                                   <Plus size={18} />
@@ -288,13 +247,13 @@ const CleaningServicePage = () => {
                           </div>
                       ))
                       : // View for the request summary
-                      service.options.map((option) => {
-                        const quantity = selectedOptions[option.id] || 0;
+                      (currentService.options || []).map((option) => {
+                        const quantity = selectedOptions[option._id || option.id] || 0;
                         if (quantity === 0) return null;
 
                         return (
                             <div
-                                key={option.id}
+                                key={option._id || option.id}
                                 className="flex items-center justify-between border-b border-gray-200 pb-4"
                             >
                               <div className="flex items-center">
@@ -312,7 +271,7 @@ const CleaningServicePage = () => {
                             </span>
                                 <div className="flex items-center gap-2">
                                   <button
-                                      onClick={() => handleDecrement(option.id)}
+                                      onClick={() => handleDecrement(option._id || option.id)}
                                       className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                                   >
                                     <Minus size={18} />
@@ -321,7 +280,7 @@ const CleaningServicePage = () => {
                                 {quantity}
                               </span>
                                   <button
-                                      onClick={() => handleIncrement(option.id)}
+                                      onClick={() => handleIncrement(option._id || option.id)}
                                       className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                                   >
                                     <Plus size={18} />
@@ -346,13 +305,11 @@ const CleaningServicePage = () => {
                     <button
                         onClick={handleRequestService}
                         className={`w-full py-3 rounded-lg font-medium transition-colors ${
-                            Object.values(selectedOptions).some((qty) => qty > 0)
+                            hasSelectedOptions()
                                 ? 'bg-black text-white hover:bg-gray-800'
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
-                        disabled={
-                          !Object.values(selectedOptions).some((qty) => qty > 0)
-                        }
+                        disabled={!hasSelectedOptions()}
                     >
                       Review Request
                     </button>
