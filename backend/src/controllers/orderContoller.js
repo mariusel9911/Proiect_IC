@@ -35,14 +35,14 @@ export const createOrder = async (req, res) => {
     // Verify the service exists
     const service = await Service.findById(serviceId);
     if (!service) {
-      console.log('❌ Service not found with ID:', serviceId);
+      console.log('Service not found with ID:', serviceId);
       return res.status(404).json({
         success: false,
         message: 'Service not found',
       });
     }
 
-    console.log('✅ Service found:', service.name);
+    console.log('Service found:', service.name);
     console.log('Service options:', JSON.stringify(service.options, null, 2));
 
     // Create a map for easier option lookup
@@ -81,7 +81,7 @@ export const createOrder = async (req, res) => {
 
         if (!serviceOption) {
           // If still not found, log available options and throw error
-          console.log('❌ Available option IDs:');
+          console.log('Not Available option IDs:');
           service.options.forEach((opt) =>
             console.log(`- ${opt._id} (${opt.name})`)
           );
@@ -116,7 +116,7 @@ export const createOrder = async (req, res) => {
       });
 
       await order.save();
-      console.log('✅ Order saved successfully!');
+      console.log('Order saved successfully!');
 
       res.status(201).json({
         success: true,
@@ -124,7 +124,7 @@ export const createOrder = async (req, res) => {
         order,
       });
     } catch (error) {
-      console.error('❌ Error validating options:', error.message);
+      console.error('Error validating options:', error.message);
       throw error;
     }
   } catch (error) {

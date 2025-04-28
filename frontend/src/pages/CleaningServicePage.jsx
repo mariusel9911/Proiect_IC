@@ -27,7 +27,7 @@ const CleaningServicePage = () => {
 
   const navigate = useNavigate();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-  const [view, setView] = useState('options'); // 'options' or 'request'
+  const [view, setView] = useState('options');
 
   // Get provider from location state
   const provider = location.state?.provider;
@@ -43,7 +43,6 @@ const CleaningServicePage = () => {
     };
   }, []);
 
-  // Add this effect to check if all items are removed in preview mode
   useEffect(() => {
     // Only run this check when in 'request' view
     if (view === 'request' && !hasSelectedOptions()) {

@@ -190,7 +190,7 @@ const CheckoutPage = () => {
         return;
       }
 
-      // Debug log - remove in production
+      // Debug log
       console.log('Submitting order data:', JSON.stringify(orderData, null, 2));
 
       // Create order in backend
@@ -342,7 +342,7 @@ const CheckoutPage = () => {
                         name="scheduledDate"
                         value={scheduledDate}
                         onChange={handleInputChange}
-                        min={new Date().toISOString().split('T')[0]} // Can't select past dates
+                        min={new Date().toISOString().split('T')[0]}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                         required
                       />
