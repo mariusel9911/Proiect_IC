@@ -25,8 +25,8 @@ export const getAllProviders = async (req, res) => {
     }
 
     const providers = await Provider.find(query)
-      .populate('serviceOfferings.service', 'name type')
-      .select('-reviews');
+        .populate('serviceOfferings.service', 'name type')
+        .select('-reviews');
 
     res.status(200).json({
       success: true,
@@ -48,8 +48,8 @@ export const getProviderById = async (req, res) => {
     const { providerId } = req.params;
 
     const provider = await Provider.findById(providerId)
-      .populate('serviceOfferings.service', 'name description type options')
-      .populate('reviews.user', 'name');
+        .populate('serviceOfferings.service', 'name description type options')
+        .populate('reviews.user', 'name');
 
     if (!provider) {
       return res.status(404).json({
@@ -58,9 +58,54 @@ export const getProviderById = async (req, res) => {
       });
     }
 
+    // Process service offerings to properly merge custom prices with service options
+    const processedServiceOfferings = provider.serviceOfferings.map(offering => {
+      const service = offering.service;
+
+      // Create deep copy of service to avoid modifying the original
+      const processedService = {
+        ...service.toObject(),
+        options: service.options.map(option => {
+          // Find if provider has a custom option for this service option
+          const providerOption = offering.options.find(
+              po => po.optionId.toString() === option._id.toString()
+          );
+
+          if (providerOption) {
+            // Provider has custom option - use provider's price but keep service's other properties
+            return {
+              ...option,
+              price: `€${providerOption.price}`, // Format provider price
+              priceValue: Number(providerOption.price), // Add raw numeric price for calculations
+              // You can override other properties if needed
+              description: providerOption.description || option.description,
+            };
+          }
+
+          // No custom option - add priceValue to service default option
+          const defaultPrice = option.price.replace('€', '');
+          return {
+            ...option,
+            priceValue: Number(defaultPrice)
+          };
+        })
+      };
+
+      return {
+        ...offering.toObject(),
+        service: processedService
+      };
+    });
+
+    // Replace original serviceOfferings with processed ones
+    const processedProvider = {
+      ...provider.toObject(),
+      serviceOfferings: processedServiceOfferings
+    };
+
     res.status(200).json({
       success: true,
-      provider,
+      provider: processedProvider,
     });
   } catch (error) {
     console.error('Error fetching provider:', error);
@@ -76,6 +121,15 @@ export const getProvidersForService = async (req, res) => {
   try {
     const { serviceId } = req.params;
 
+    // First, get the service to have access to default options
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
+    }
+
     // Find providers that offer this service
     const providers = await Provider.find({
       'serviceOfferings.service': serviceId,
@@ -86,8 +140,52 @@ export const getProvidersForService = async (req, res) => {
     const formattedProviders = providers.map((provider) => {
       // Find the specific service offering for this service
       const serviceOffering = provider.serviceOfferings.find(
-        (offering) => offering.service.toString() === serviceId
+          (offering) => offering.service.toString() === serviceId
       );
+
+      // Process options with price formatting
+      const processedOptions = [];
+
+      if (serviceOffering && serviceOffering.options && serviceOffering.options.length > 0) {
+        // Map service options to find matches
+        service.options.forEach(serviceOption => {
+          // Find if provider has a custom option for this service option
+          const providerOption = serviceOffering.options.find(
+              po => po.optionId.toString() === serviceOption._id.toString()
+          );
+
+          if (providerOption) {
+            // Provider has custom option - use provider's price but service's icon
+            processedOptions.push({
+              _id: providerOption.optionId,
+              id: providerOption.optionId,
+              name: providerOption.name,
+              price: `€${providerOption.price}`, // Format provider price
+              priceValue: Number(providerOption.price), // Add raw numeric price for calculations
+              icon: serviceOption.icon, // Keep service icon
+              description: providerOption.description,
+            });
+          } else {
+            // Provider doesn't have custom option - use service default
+            const defaultPrice = serviceOption.price.replace('€', '');
+            processedOptions.push({
+              ...serviceOption,
+              // Add raw numeric price for calculations
+              priceValue: Number(defaultPrice)
+            });
+          }
+        });
+      } else {
+        // No custom options - use service defaults
+        service.options.forEach(option => {
+          const defaultPrice = option.price.replace('€', '');
+          processedOptions.push({
+            ...option,
+            // Add raw numeric price for calculations
+            priceValue: Number(defaultPrice)
+          });
+        });
+      }
 
       return {
         _id: provider._id,
@@ -97,15 +195,23 @@ export const getProvidersForService = async (req, res) => {
         email: provider.email,
         phone: provider.phone,
         type: provider.type,
-        price: provider.price,
+        // price: provider.price,
         location: provider.location,
         rating: provider.rating,
         isPopular: provider.isPopular,
         isVerified: provider.isVerified,
         image: provider.image,
-        // Include service-specific options and availability
-        options: serviceOffering?.options || [],
+        // Use processed options
+        options: processedOptions,
         availability: serviceOffering?.availability || provider.availability,
+        // Add reference to service
+        service: {
+          _id: service._id,
+          name: service.name,
+          description: service.description,
+          type: service.type,
+          options: processedOptions // Include processed options in service too
+        }
       };
     });
 
@@ -134,7 +240,7 @@ export const createProvider = async (req, res) => {
       phone,
       type,
       services,
-      price,
+      // price,
       location,
       availability,
       serviceOptions,
@@ -155,7 +261,7 @@ export const createProvider = async (req, res) => {
     if (services && services.length > 0) {
       for (const serviceData of services) {
         const serviceId =
-          typeof serviceData === 'object' ? serviceData.id : serviceData;
+            typeof serviceData === 'object' ? serviceData.id : serviceData;
 
         // Verify the service exists
         const service = await Service.findById(serviceId);
@@ -183,7 +289,7 @@ export const createProvider = async (req, res) => {
               optionId: option.optionId,
               name: option.name || serviceOption.name,
               price:
-                option.price || parseInt(serviceOption.price.replace('€', '')),
+                  option.price || parseInt(serviceOption.price.replace('€', '')),
               description: option.description || serviceOption.description,
             });
           }
@@ -194,9 +300,9 @@ export const createProvider = async (req, res) => {
           service: serviceId,
           options: options,
           description:
-            typeof serviceData === 'object' ? serviceData.description : null,
+              typeof serviceData === 'object' ? serviceData.description : null,
           availability:
-            typeof serviceData === 'object' ? serviceData.availability : null,
+              typeof serviceData === 'object' ? serviceData.availability : null,
         });
       }
     }
@@ -210,7 +316,7 @@ export const createProvider = async (req, res) => {
       phone,
       type,
       serviceOfferings,
-      price: price || 'FREE',
+      // price: price || 'FREE',
       location,
       availability,
       user: req.userId,
@@ -255,7 +361,7 @@ export const updateProvider = async (req, res) => {
       return res.status(403).json({
         success: false,
         message:
-          'Unauthorized: You do not have permission to update this provider',
+            'Unauthorized: You do not have permission to update this provider',
       });
     }
 
@@ -267,11 +373,11 @@ export const updateProvider = async (req, res) => {
       if (updates.services) {
         for (const serviceData of updates.services) {
           const serviceId =
-            typeof serviceData === 'object' ? serviceData.id : serviceData;
+              typeof serviceData === 'object' ? serviceData.id : serviceData;
 
           // Check if this service already exists in offerings
           const existingIndex = serviceOfferings.findIndex(
-            (offering) => offering.service.toString() === serviceId
+              (offering) => offering.service.toString() === serviceId
           );
 
           if (existingIndex === -1) {
@@ -280,23 +386,23 @@ export const updateProvider = async (req, res) => {
               service: serviceId,
               options: [],
               description:
-                typeof serviceData === 'object'
-                  ? serviceData.description
-                  : null,
+                  typeof serviceData === 'object'
+                      ? serviceData.description
+                      : null,
               availability:
-                typeof serviceData === 'object'
-                  ? serviceData.availability
-                  : null,
+                  typeof serviceData === 'object'
+                      ? serviceData.availability
+                      : null,
             });
           } else if (typeof serviceData === 'object') {
             // Update existing service
             if (serviceData.description) {
               serviceOfferings[existingIndex].description =
-                serviceData.description;
+                  serviceData.description;
             }
             if (serviceData.availability) {
               serviceOfferings[existingIndex].availability =
-                serviceData.availability;
+                  serviceData.availability;
             }
           }
         }
@@ -305,20 +411,20 @@ export const updateProvider = async (req, res) => {
       // Handle service options updates
       if (updates.serviceOptions) {
         for (const [serviceId, options] of Object.entries(
-          updates.serviceOptions
+            updates.serviceOptions
         )) {
           // Find the service offering
           const offeringIndex = serviceOfferings.findIndex(
-            (offering) => offering.service.toString() === serviceId
+              (offering) => offering.service.toString() === serviceId
           );
 
           if (offeringIndex !== -1) {
             // Update or add options
             for (const option of options) {
               const optionIndex = serviceOfferings[
-                offeringIndex
-              ].options.findIndex(
-                (o) => o.optionId.toString() === option.optionId
+                  offeringIndex
+                  ].options.findIndex(
+                  (o) => o.optionId.toString() === option.optionId
               );
 
               if (optionIndex !== -1) {
@@ -343,9 +449,9 @@ export const updateProvider = async (req, res) => {
     }
 
     const updatedProvider = await Provider.findByIdAndUpdate(
-      providerId,
-      updates,
-      { new: true, runValidators: true }
+        providerId,
+        updates,
+        { new: true, runValidators: true }
     );
 
     res.status(200).json({
@@ -393,7 +499,7 @@ export const addProviderReview = async (req, res) => {
 
     // Check if user already reviewed this provider
     const alreadyReviewed = provider.reviews.find(
-      (review) => review.user.toString() === req.userId
+        (review) => review.user.toString() === req.userId
     );
 
     if (alreadyReviewed) {
@@ -414,8 +520,8 @@ export const addProviderReview = async (req, res) => {
 
     // Recalculate average rating
     const totalRating = provider.reviews.reduce(
-      (sum, review) => sum + review.rating,
-      0
+        (sum, review) => sum + review.rating,
+        0
     );
     provider.rating = (totalRating / provider.reviews.length).toFixed(1);
 
