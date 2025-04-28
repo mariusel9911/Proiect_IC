@@ -27,10 +27,20 @@ const CleaningServicePage = () => {
 
   const navigate = useNavigate();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-  const [view, setView] = useState('options');
+  const [view, setView] = useState('options'); // 'options' or 'request'
+  const [isLoading, setIsLoading] = useState(true);
 
   // Get provider from location state
   const provider = location.state?.provider;
+
+  // State to track which service's options to display
+  const [serviceOptions, setServiceOptions] = useState([]);
+
+  // Debug location state
+  useEffect(() => {
+    console.log('Location state:', location.state);
+    console.log('Provider from state:', provider);
+  }, [location.state, provider]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -43,6 +53,7 @@ const CleaningServicePage = () => {
     };
   }, []);
 
+  // Add this effect to check if all items are removed in preview mode
   useEffect(() => {
     // Only run this check when in 'request' view
     if (view === 'request' && !hasSelectedOptions()) {
@@ -50,19 +61,84 @@ const CleaningServicePage = () => {
     }
   }, [selectedOptions, view, hasSelectedOptions]);
 
-  // Fetch service data
+  // Fetch service data and set up options
   useEffect(() => {
+    setIsLoading(true);
+
+    const processService = (service) => {
+      if (!service) {
+        console.error('No service data available');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Processing service:', service);
+      setSelectedService(service);
+
+      // Process options
+      let options;
+      if (provider) {
+        // If provider has specific options
+        if (provider.options && Array.isArray(provider.options)) {
+          options = provider.options;
+          console.log("Using provider's specific options:", options);
+        }
+        // If provider has serviceOfferings with options for this service
+        else if (provider.serviceOfferings) {
+          const serviceOffering = provider.serviceOfferings.find(
+            (so) => so.service === serviceId || so.service._id === serviceId
+          );
+
+          if (serviceOffering && serviceOffering.options) {
+            options = serviceOffering.options.map((option) => ({
+              _id: option.optionId,
+              id: option.optionId,
+              name: option.name,
+              price: `€${option.price}`,
+              icon: option.icon || '📦', // Default icon if not provided
+              description: option.description,
+            }));
+            console.log('Using options from serviceOfferings:', options);
+          }
+        }
+      }
+
+      // Fallback to service options if no provider options available
+      if (!options && service.options) {
+        options = service.options;
+        console.log('Using default service options:', options);
+      }
+
+      if (options) {
+        setServiceOptions(options);
+      } else {
+        console.warn('No options found for this service');
+        setServiceOptions([]);
+      }
+
+      setIsLoading(false);
+    };
+
     // If the provider passed service info, use that
     if (provider && provider.service) {
-      setSelectedService(provider.service);
+      console.log('Using service from provider:', provider.service);
+      processService(provider.service);
     } else {
       // Otherwise fetch from API
-      fetchServiceById(serviceId).then((service) => {
-        if (service) {
-          setSelectedService(service);
-          console.log('Service fetched:', service); // Debug log
-        }
-      });
+      console.log('Fetching service from API:', serviceId);
+      fetchServiceById(serviceId)
+        .then((service) => {
+          if (service) {
+            processService(service);
+          } else {
+            console.error('Failed to fetch service');
+            setIsLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching service:', err);
+          setIsLoading(false);
+        });
     }
   }, [serviceId, provider, fetchServiceById, setSelectedService]);
 
@@ -81,12 +157,14 @@ const CleaningServicePage = () => {
   const handleIncrement = (optionId) => {
     // Make sure optionId is a string
     const id = String(optionId);
+    console.log('Incrementing option:', id);
     updateSelectedOption(id, (selectedOptions[id] || 0) + 1);
   };
 
   const handleDecrement = (optionId) => {
     // Make sure optionId is a string
     const id = String(optionId);
+    console.log('Decrementing option:', id);
     if (selectedOptions[id] > 0) {
       updateSelectedOption(id, selectedOptions[id] - 1);
     }
@@ -108,7 +186,8 @@ const CleaningServicePage = () => {
       state: {
         serviceId,
         selectedOptions,
-        service: currentService,
+        service: currentService || provider?.service,
+        provider: provider, // Pass provider information to checkout
       },
     });
   };
@@ -118,17 +197,17 @@ const CleaningServicePage = () => {
   };
 
   const calculateTotal = () => {
-    if (!currentService) return 0;
+    if (!serviceOptions || serviceOptions.length === 0) return 0;
 
-    return (currentService.options || []).reduce((total, option) => {
+    return serviceOptions.reduce((total, option) => {
       const optionId = option._id || option.id;
       const quantity = selectedOptions[optionId] || 0;
-      const price = parseInt(option.price.replace('€', '')) || 0;
+      const price = parseInt(option.price?.replace('€', '')) || 0;
       return total + price * quantity;
     }, 0);
   };
 
-  if (serviceLoading || !currentService) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
         <LoadingSpinner text="Loading service details..." />
@@ -136,9 +215,31 @@ const CleaningServicePage = () => {
     );
   }
 
-  const serviceName = provider?.name || currentService.name;
-  const serviceDescription =
-    provider?.description || currentService.description;
+  // Get service data either from provider or current service
+  const service = provider?.service || currentService;
+
+  if (!service) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
+            Service Not Found
+          </h2>
+          <p className="mb-4">
+            There was a problem loading the service information.
+          </p>
+          <Link to="/" className="text-blue-600 hover:underline">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Use provider-specific details or fallback to service details
+  const serviceName = provider?.name || service.name;
+  const serviceDescription = provider?.description || service.description;
+  const serviceType = service.type;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col items-center justify-between">
@@ -189,9 +290,9 @@ const CleaningServicePage = () => {
               <p className="text-gray-600">{serviceDescription}</p>
               <div className="flex justify-between items-center mt-4">
                 <span className="text-green-600 font-bold">
-                  {provider?.price || currentService.price || 'FREE'}
+                  {provider?.price || service.price || 'FREE'}
                 </span>
-                {provider && (
+                {provider && provider.rating && (
                   <div className="flex items-center">
                     <span className="text-sm text-gray-600 mr-2">
                       Provider Rating:
@@ -209,14 +310,14 @@ const CleaningServicePage = () => {
 
             <div className="text-center mb-4">
               <h2 className="text-lg md:text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                {currentService.type}
+                {serviceType}
               </h2>
             </div>
 
             <div className="flex-grow overflow-y-auto pr-2">
               <div className="flex flex-col gap-6">
                 {view === 'options'
-                  ? (currentService.options || []).map((option) => {
+                  ? (serviceOptions || []).map((option) => {
                       const optionId = option._id || option.id;
                       return (
                         <div
@@ -258,7 +359,7 @@ const CleaningServicePage = () => {
                       );
                     })
                   : // View for the request summary
-                    (currentService.options || []).map((option) => {
+                    (serviceOptions || []).map((option) => {
                       const optionId = option._id || option.id;
                       const quantity = selectedOptions[optionId] || 0;
                       if (quantity === 0) return null;
