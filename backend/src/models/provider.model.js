@@ -22,6 +22,52 @@ const reviewSchema = new mongoose.Schema({
   },
 });
 
+const providerServiceSchema = new mongoose.Schema({
+  service: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service',
+    required: true,
+  },
+  options: [
+    {
+      optionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+      },
+      name: {
+        type: String,
+        required: true,
+      },
+      price: {
+        type: Number,
+        required: true,
+      },
+      description: String,
+    },
+  ],
+  // Service-specific availability
+  availability: [
+    {
+      day: {
+        type: String,
+        enum: [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday',
+        ],
+      },
+      startTime: String,
+      endTime: String,
+    },
+  ],
+  // Service-specific description or notes
+  description: String,
+});
+
 const providerSchema = new mongoose.Schema(
   {
     name: {
@@ -49,15 +95,11 @@ const providerSchema = new mongoose.Schema(
       enum: ['person', 'company'],
       required: true,
     },
-    services: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Service',
-      },
-    ],
+
+    serviceOfferings: [providerServiceSchema],
     price: {
       type: String,
-      default: 'FREE',
+      default: 'N/A',
     },
     location: {
       address: String,
@@ -69,6 +111,7 @@ const providerSchema = new mongoose.Schema(
         lng: Number,
       },
     },
+    // Global availability
     availability: [
       {
         day: {
@@ -128,6 +171,10 @@ providerSchema.pre('save', function (next) {
     this.rating = 0;
   }
   next();
+});
+
+providerSchema.virtual('services').get(function () {
+  return this.serviceOfferings.map((offering) => offering.service);
 });
 
 export const Provider = mongoose.model('Provider', providerSchema);

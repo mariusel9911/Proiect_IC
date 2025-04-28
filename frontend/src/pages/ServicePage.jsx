@@ -6,17 +6,23 @@ import { useServiceStore } from '../store/serviceStore';
 import { useProviderStore } from '../store/providerStore';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DebugView from '../components/DebugView'; // Import debug component
 import toast from 'react-hot-toast';
 
 const ServicePage = () => {
   const { serviceId } = useParams();
   const { user, logout } = useAuthStore();
-  const { currentService, fetchServiceById, clearCurrentService, error: serviceError } = useServiceStore();
+  const {
+    currentService,
+    fetchServiceById,
+    clearCurrentService,
+    error: serviceError,
+  } = useServiceStore();
   const {
     providers,
     fetchProvidersForService,
     isLoading: providersLoading,
-    error: providersError
+    error: providersError,
   } = useProviderStore();
 
   const navigate = useNavigate();
@@ -27,6 +33,7 @@ const ServicePage = () => {
     { id: 'company', name: 'Companies', icon: <Building size={20} /> },
   ]);
   const [selectedType, setSelectedType] = useState(null);
+  const [showDebug, setShowDebug] = useState(false); // Toggle for debug info
 
   useEffect(() => {
     const handleResize = () => {
@@ -39,8 +46,22 @@ const ServicePage = () => {
     };
   }, []);
 
+  // Add key press handler for debug mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Shift+D to toggle debug mode
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        setShowDebug(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Fetch service data
   useEffect(() => {
+    console.log('Fetching service with ID:', serviceId);
     fetchServiceById(serviceId);
     fetchProvidersForService(serviceId);
 
@@ -48,7 +69,12 @@ const ServicePage = () => {
     return () => {
       clearCurrentService();
     };
-  }, [serviceId, fetchServiceById, fetchProvidersForService, clearCurrentService]);
+  }, [
+    serviceId,
+    fetchServiceById,
+    fetchProvidersForService,
+    clearCurrentService,
+  ]);
 
   // Handle errors
   useEffect(() => {
@@ -69,17 +95,24 @@ const ServicePage = () => {
     setSearch(e.target.value);
   };
 
+  // Add debug logs
+  useEffect(() => {
+    console.log('Current service:', currentService);
+    console.log('Providers:', providers);
+  }, [currentService, providers]);
+
   const filteredProviders = providers.filter((provider) => {
     const matchesSearch =
         provider.name.toLowerCase().includes(search.toLowerCase()) ||
         provider.title.toLowerCase().includes(search.toLowerCase()) ||
-        (provider.description && provider.description.toLowerCase().includes(search.toLowerCase()));
+        (provider.description &&
+            provider.description.toLowerCase().includes(search.toLowerCase()));
 
     const matchesType = selectedType ? provider.type === selectedType : true;
     return matchesSearch && matchesType;
   });
 
-  if (!currentService) {
+  if (providersLoading || !currentService) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
           <LoadingSpinner text="Loading service details..." />
@@ -91,10 +124,7 @@ const ServicePage = () => {
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col items-center justify-between">
         <div className="w-full bg-white flex flex-col">
           <div className="w-full p-3 bg-white shadow-lg flex justify-center items-center">
-            <Link
-                to="/"
-                className="text-blue-600 flex items-center mr-4"
-            >
+            <Link to="/" className="text-blue-600 flex items-center mr-4">
               <ArrowLeft className="mr-1" /> Back
             </Link>
             <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
@@ -129,6 +159,14 @@ const ServicePage = () => {
                   {filteredProviders.length} / {providers.length}
                 </div>
               </div>
+
+              {/* Debug section (only visible when triggered) */}
+              {showDebug && (
+                  <div className="mb-4">
+                    <DebugView data={currentService} title="Service Data" />
+                    <DebugView data={providers[0]} title="First Provider Sample" />
+                  </div>
+              )}
 
               {/* Service description */}
               <div className="mb-6 bg-gray-50 p-4 rounded-lg">
@@ -172,54 +210,86 @@ const ServicePage = () => {
                   <div className="flex-grow overflow-y-auto pr-2">
                     <div className="flex flex-col gap-4">
                       {filteredProviders.length > 0 ? (
-                          filteredProviders.map((provider) => (
-                              <Link
-                                  to={`/cleaning/${serviceId}`}
-                                  key={provider._id || provider.id}
-                                  state={{ provider, serviceId }}
-                              >
-                                <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer">
-                                  <div className="p-4 md:p-6 flex flex-col relative">
-                                    <h2 className="text-xl md:text-2xl font-semibold mb-2">
-                                      {provider.name}
-                                    </h2>
-                                    <div className="bg-gray-800 h-10 w-3/4 rounded mb-4">
-                                      <div className="text-white text-sm p-2 truncate">
-                                        {provider.title}
-                                      </div>
-                                    </div>
+                          filteredProviders.map((provider) => {
+                            // Use provider's processed options if available
+                            const providerOptions = provider.options || currentService.options;
 
-                                    <p className="text-gray-600 mb-4">
-                                      {provider.description}
-                                    </p>
+                            // Show sample of first option if in debug mode
+                            if (showDebug && providerOptions?.length > 0) {
+                              console.log(`Provider ${provider.name} first option:`, providerOptions[0]);
+                            }
 
-                                    <div className="flex justify-between items-center">
-                                      <div className="flex items-center">
-                                        {provider.isPopular && (
-                                            <div className="flex items-center text-blue-600 mr-4">
-                                              <Tag size={16} className="mr-1" />
-                                              <span className="text-sm font-medium">HOT</span>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center text-amber-500">
-                                  <span className="text-sm font-medium mr-1">
-                                    ★
-                                  </span>
-                                          <span className="text-sm text-gray-700">
-                                    {provider.rating || "New"}
-                                  </span>
+                            return (
+                                <Link
+                                    to={`/cleaning/${serviceId}`}
+                                    key={provider._id || provider.id}
+                                    state={{
+                                      provider: {
+                                        ...provider,
+                                        // Include service with any processed options
+                                        service: {
+                                          ...currentService,
+                                          options: providerOptions
+                                        }
+                                      },
+                                      serviceId,
+                                    }}
+                                >
+                                  <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer">
+                                    <div className="p-4 md:p-6 flex flex-col relative">
+                                      <h2 className="text-xl md:text-2xl font-semibold mb-2">
+                                        {provider.name}
+                                      </h2>
+                                      <div className="bg-gray-800 h-10 w-3/4 rounded mb-4">
+                                        <div className="text-white text-sm p-2 truncate">
+                                          {provider.title}
                                         </div>
                                       </div>
-                                      <div className="text-right">
-                                <span className="text-green-600 font-bold">
-                                  {provider.price || "FREE"}
-                                </span>
+
+                                      <p className="text-gray-600 mb-4">
+                                        {provider.description}
+                                      </p>
+
+                                      {/* Show a sample of pricing if available */}
+                                      {showDebug && providerOptions?.length > 0 && (
+                                          <div className="bg-gray-100 p-2 mb-3 rounded">
+                                            <p className="text-xs text-gray-600">Example pricing:</p>
+                                            <p className="text-sm">
+                                              {providerOptions[0].name}: {providerOptions[0].price}
+                                            </p>
+                                          </div>
+                                      )}
+
+                                      <div className="flex justify-between items-center">
+                                        <div className="flex items-center">
+                                          {provider.isPopular && (
+                                              <div className="flex items-center text-blue-600 mr-4">
+                                                <Tag size={16} className="mr-1" />
+                                                <span className="text-sm font-medium">
+                                        HOT
+                                      </span>
+                                              </div>
+                                          )}
+                                          <div className="flex items-center text-amber-500">
+                                    <span className="text-sm font-medium mr-1">
+                                      ★
+                                    </span>
+                                            <span className="text-sm text-gray-700">
+                                      {provider.rating || 'New'}
+                                    </span>
+                                          </div>
+                                        </div>
+                                  {/*      <div className="text-right">*/}
+                                  {/*<span className="text-green-600 font-bold">*/}
+                                  {/*  {provider.price || 'FREE'}*/}
+                                  {/*</span>*/}
+                                  {/*      </div>*/}
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              </Link>
-                          ))
+                                </Link>
+                            );
+                          })
                       ) : (
                           <div className="text-center py-12 bg-white rounded-xl shadow-md">
                             No providers found matching your criteria.

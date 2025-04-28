@@ -19,99 +19,28 @@ export const useProviderStore = create((set, get) => ({
       if (filters.type) queryParams.append('type', filters.type);
       if (filters.search) queryParams.append('search', filters.search);
 
-      // Try API first
-      try {
-        const response = await axios.get(
+      const response = await axios.get(
           `${API_URL}/providers?${queryParams.toString()}`
-        );
+      );
 
-        if (response.data.success) {
-          set({
-            providers: response.data.providers,
-            isLoading: false,
-            error: null,
-          });
-          return response.data.providers;
-        }
-      } catch (error) {
-        console.log(
-          'Error fetching providers from API, falling back to mock data:',
-          error.message
+      if (response.data.success) {
+        set({
+          providers: response.data.providers,
+          isLoading: false,
+          error: null,
+        });
+        return response.data.providers;
+      } else {
+        throw new Error(
+            'Failed to fetch providers: API returned no success flag'
         );
       }
-
-      // Fallback to mock data
-      const mockProviders = [
-        {
-          id: 1,
-          name: 'John Smith Mock',
-          title: 'Professional Cleaning Expert',
-          description:
-            'Experienced professional with 10+ years in the cleaning industry',
-          price: 'FREE',
-          type: 'person',
-          rating: 4.8,
-          isPopular: true,
-          isVerified: true,
-          image: '/api/placeholder/80/80',
-        },
-        {
-          id: 2,
-          name: 'ABC Cleaning Solutions Mock',
-          title: 'Enterprise Cleaning Services',
-          description:
-            'Leading company providing comprehensive cleaning solutions for homes and offices',
-          price: 'FREE',
-          type: 'company',
-          rating: 4.5,
-          isVerified: true,
-          image: '/api/placeholder/80/80',
-        },
-        {
-          id: 3,
-          name: 'Clean & Fresh Mock',
-          title: 'Eco-friendly Cleaning',
-          description:
-            'Specialized in eco-friendly cleaning solutions for environmentally conscious clients',
-          price: 'FREE',
-          type: 'company',
-          rating: 4.7,
-          isPopular: true,
-          isVerified: true,
-          image: '/api/placeholder/80/80',
-        },
-      ];
-
-      // Apply filters to mock data
-      let filteredProviders = [...mockProviders];
-
-      if (filters.type) {
-        filteredProviders = filteredProviders.filter(
-          (provider) => provider.type === filters.type
-        );
-      }
-
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        filteredProviders = filteredProviders.filter(
-          (provider) =>
-            provider.name.toLowerCase().includes(searchLower) ||
-            provider.description.toLowerCase().includes(searchLower) ||
-            provider.title.toLowerCase().includes(searchLower)
-        );
-      }
-
-      set({
-        providers: filteredProviders,
-        isLoading: false,
-        error: null,
-      });
-
-      return filteredProviders;
     } catch (error) {
+      console.error('Error fetching providers:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Failed to fetch providers',
+        providers: [],
       });
       return [];
     }
@@ -122,54 +51,26 @@ export const useProviderStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // Try API first
-      try {
-        const response = await axios.get(`${API_URL}/providers/${providerId}`);
+      const response = await axios.get(`${API_URL}/providers/${providerId}`);
 
-        if (response.data.success) {
-          set({
-            currentProvider: response.data.provider,
-            isLoading: false,
-            error: null,
-          });
-          return response.data.provider;
-        }
-      } catch (error) {
-        console.log(
-          'Error fetching provider from API, falling back to mock data:',
-          error.message
-        );
-      }
-
-      // Fallback to mock data
-      const providers = get().providers;
-
-      if (providers.length === 0) {
-        await get().fetchProviders();
-      }
-
-      const provider = get().providers.find(
-        (p) => p.id.toString() === providerId.toString() || p._id === providerId
-      );
-
-      if (provider) {
+      if (response.data.success) {
         set({
-          currentProvider: provider,
+          currentProvider: response.data.provider,
           isLoading: false,
           error: null,
         });
-        return provider;
+        return response.data.provider;
+      } else {
+        throw new Error(
+            'Failed to fetch provider: API returned no success flag'
+        );
       }
-
-      set({
-        isLoading: false,
-        error: 'Provider not found',
-      });
-      return null;
     } catch (error) {
+      console.error('Error fetching provider:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Failed to fetch provider',
+        currentProvider: null,
       });
       return null;
     }
@@ -180,48 +81,61 @@ export const useProviderStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // Handle "main" as a special case
-      if (serviceId === 'main') {
-        serviceId = 6; // Use ID 6 for "main" service
-      }
+      console.log(`Fetching providers for service ID: ${serviceId}`);
 
-      // Try API first
-      try {
-        const response = await axios.get(
+      const response = await axios.get(
           `${API_URL}/providers/service/${serviceId}`
+      );
+
+      if (response.data.success) {
+        console.log(
+            `Received ${response.data.providers.length} providers for service`
         );
 
-        if (response.data.success) {
-          set({
-            providers: response.data.providers,
-            isLoading: false,
-            error: null,
-          });
-          return response.data.providers;
-        }
-      } catch (error) {
-        console.log(
-          'Error fetching service providers from API, falling back to mock data:',
-          error.message
+        // Store the providers directly as returned from API
+        // The price formatting should now be handled server-side
+
+        // Debug log for price formats
+        response.data.providers.forEach(provider => {
+          if (provider.options && provider.options.length > 0) {
+            console.log(
+                `Provider ${provider.name} options:`,
+                provider.options.map(opt => ({
+                  name: opt.name,
+                  price: opt.price,
+                  priceValue: opt.priceValue
+                }))
+            );
+          }
+        });
+
+        set({
+          providers: response.data.providers,
+          isLoading: false,
+          error: null,
+        });
+
+        console.log('Formatted providers:', response.data.providers);
+        return response.data.providers;
+      } else {
+        throw new Error(
+            'Failed to fetch providers: API returned no success flag'
         );
       }
-
-      // Fallback to all providers (in a real app, we would filter by service)
-      await get().fetchProviders();
-      const providers = get().providers;
-
-      set({
-        isLoading: false,
-        error: null,
-      });
-
-      return providers;
     } catch (error) {
+      console.error(
+          'Error fetching service providers from API:',
+          error.message
+      );
+      console.error('Error details:', error);
+
       set({
+        providers: [],
         isLoading: false,
         error:
-          error.response?.data?.message || 'Failed to fetch service providers',
+            error.response?.data?.message || 'Failed to fetch service providers',
       });
+
       return [];
     }
   },
@@ -231,42 +145,25 @@ export const useProviderStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // Try API first
-      try {
-        const response = await axios.post(
+      const response = await axios.post(
           `${API_URL}/providers/${providerId}/reviews`,
           reviewData,
           { withCredentials: true }
-        );
+      );
 
-        if (response.data.success) {
-          // Update current provider if it's the one being reviewed
-          if (
-            get().currentProvider &&
-            get().currentProvider._id === providerId
-          ) {
-            set({ currentProvider: response.data.provider });
-          }
-
-          set({ isLoading: false, error: null });
-          return true;
+      if (response.data.success) {
+        // Update current provider if it's the one being reviewed
+        if (get().currentProvider && get().currentProvider._id === providerId) {
+          set({ currentProvider: response.data.provider });
         }
-      } catch (error) {
-        console.log('Error adding review:', error.message);
-        set({
-          isLoading: false,
-          error: error.response?.data?.message || 'Failed to add review',
-        });
-        return false;
-      }
 
-      // No fallback for adding reviews
-      set({
-        isLoading: false,
-        error: 'Failed to add review',
-      });
-      return false;
+        set({ isLoading: false, error: null });
+        return true;
+      } else {
+        throw new Error('Failed to add review: API returned no success flag');
+      }
     } catch (error) {
+      console.error('Error adding review:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Failed to add review',
