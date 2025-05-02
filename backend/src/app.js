@@ -8,9 +8,9 @@ import { config } from 'dotenv';
 import { connectDB } from './mongodb/connectDB.js';
 
 import { authRoutes } from './routes/auth/auth.routes.js';
-import { serviceRoutes } from "./routes/auth/serviceRoutes.js";
-import { providerRoutes } from "./routes/auth/providerRoutes.js";
-import { orderRoutes } from "./routes/auth/orderRoutes.js";
+import { serviceRoutes } from './routes/auth/serviceRoutes.js';
+import { providerRoutes } from './routes/auth/providerRoutes.js';
+import { orderRoutes } from './routes/auth/orderRoutes.js';
 
 // Load .env environment
 config();
@@ -28,22 +28,27 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Root route
 app.get('/', (req, res) => {
-    res.send('Hello app!');
+  res.send('Hello app!');
+});
+
+// Paypal routes
+app.get('/api/keys/paypal', (req, res) => {
+  res.send(process.env.PAYPAL_CLIENT_ID || 'sb');
 });
 
 // API ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/providers', providerRoutes);
-app.use("/api/orders", orderRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Error handler (MUST come after all routes)
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Server error!');
+  console.error(err.stack);
+  res.status(500).send('Server error!');
 });
 
 app.listen(PORT, () => {
-    connectDB();
-    console.log(`Server running on port ${PORT}`);
+  connectDB();
+  console.log(`Server running on port ${PORT}`);
 });
