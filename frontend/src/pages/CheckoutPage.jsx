@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -37,9 +37,12 @@ const CheckoutPage = () => {
     clearCheckout,
     setSelectedService,
     prepareOrderData,
+    setPaymentMethod,
+    paymentMethod,
   } = useCheckoutStore();
   const {
     createOrder,
+    updatePaymentStatus,
     isLoading: orderLoading,
     error: orderError,
   } = useOrderStore();
@@ -49,10 +52,35 @@ const CheckoutPage = () => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [timeSlot, setTimeSlot] = useState({ start: '09:00', end: '12:00' });
   const [showErrors, setShowErrors] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+  const [addressCompleted, setAddressCompleted] = useState(false);
+  const [paypalButtonRendered, setPaypalButtonRendered] = useState(false);
+  // Create a ref for the PayPal button container
+  const paypalButtonRef = useRef(null);
 
   // Get data from navigation state
   const serviceId = location.state?.serviceId;
   const initialService = location.state?.service;
+
+  // Function to validate if address is complete
+  const isAddressValid = () => {
+    return (
+      address.street &&
+      address.street.trim() !== '' &&
+      address.city &&
+      address.city.trim() !== '' &&
+      address.zipCode &&
+      address.zipCode.trim() !== '' &&
+      address.country &&
+      address.country.trim() !== ''
+    );
+  };
+
+  // Check if address is valid whenever address changes
+  useEffect(() => {
+    setAddressCompleted(isAddressValid());
+  }, [address]);
 
   useEffect(() => {
     if (!serviceId && !selectedService) {
@@ -80,6 +108,308 @@ const CheckoutPage = () => {
     setSelectedService,
   ]);
 
+  // Improved PayPal SDK Loading
+  useEffect(() => {
+    const loadPayPalScript = () => {
+      // Don't reload if already loaded
+      if (window.paypal) {
+        setPaypalLoaded(true);
+        return;
+      }
+
+      const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+      console.log('Using PayPal client ID:', PAYPAL_CLIENT_ID);
+
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=EUR`;
+      script.async = true;
+
+      script.onload = () => {
+        console.log('PayPal SDK loaded successfully');
+        setPaypalLoaded(true);
+      };
+
+      script.onerror = (err) => {
+        console.error('Failed to load PayPal SDK:', err);
+        toast.error(
+          'Failed to load PayPal payment system. Please try another payment method.'
+        );
+      };
+
+      document.body.appendChild(script);
+    };
+
+    // Only load when needed
+    if (paymentMethod === 'paypal' && !window.paypal) {
+      loadPayPalScript();
+    } else if (window.paypal) {
+      setPaypalLoaded(true);
+    }
+  }, [paymentMethod]);
+
+  // Separate effect for PayPal button rendering
+  useEffect(() => {
+    // Only try to render if all conditions are met and we haven't rendered yet
+    if (
+      paypalLoaded &&
+      paymentMethod === 'paypal' &&
+      addressCompleted &&
+      paypalButtonRef.current &&
+      !paypalButtonRendered
+    ) {
+      // Clear the container first to avoid potential rendering issues
+      try {
+        // Create the PayPal button
+        const button = window.paypal.Buttons({
+          // Set funding source - this can help with popup handling
+          fundingSource: window.paypal.FUNDING.PAYPAL,
+
+          // Use recommended styles
+          style: {
+            layout: 'vertical',
+            color: 'blue',
+            shape: 'rect',
+            label: 'paypal',
+          },
+
+          // Order creation handler
+          createOrder: async (data, actions) => {
+            try {
+              // Prepare order data
+              const orderData = prepareOrderData();
+              if (!orderData) {
+                toast.error('Invalid order data');
+                throw new Error('Failed to prepare order data');
+              }
+
+              // Set payment processing state
+              setPaymentStatus('processing');
+
+              // Create the order in your backend
+              const order = await createOrder(orderData);
+
+              // Store order reference
+              setCreatedOrder(order);
+              localStorage.setItem('currentOrder', JSON.stringify(order));
+              console.log('Order created and stored:', order);
+
+              // Return actions for PayPal to create order
+              return actions.order.create({
+                intent: 'CAPTURE',
+                purchase_units: [
+                  {
+                    amount: {
+                      value: order.grandTotal.toFixed(2),
+                      currency_code: 'EUR',
+                    },
+                    description: `Order for ${selectedService.name}`,
+                    reference_id: order._id,
+                  },
+                ],
+              });
+            } catch (error) {
+              console.error('Order creation error:', error);
+              toast.error(error.message || 'Order creation failed');
+              setPaymentStatus('pending');
+              throw error;
+            }
+          },
+
+          // Payment approval handler
+          onApprove: async (data, actions) => {
+            try {
+              console.log('Payment approved, capturing funds...');
+              const captureResult = await actions.order.capture();
+              console.log('Capture result:', captureResult);
+
+              // Get order reference - from state or localStorage
+              let orderRef = createdOrder;
+              if (!orderRef) {
+                try {
+                  const savedOrder = localStorage.getItem('currentOrder');
+                  if (savedOrder) {
+                    orderRef = JSON.parse(savedOrder);
+                  }
+                } catch (e) {
+                  console.error('Error retrieving order from localStorage:', e);
+                }
+              }
+
+              // If still no order ref, try to get from PayPal data
+              if (!orderRef) {
+                const referenceId =
+                  captureResult.purchase_units?.[0]?.reference_id;
+                if (!referenceId) {
+                  toast.error('Could not find order reference');
+                  throw new Error('Missing order reference');
+                }
+                orderRef = { _id: referenceId };
+              }
+
+              // Update payment status in backend
+              await updatePaymentStatus(orderRef._id, 'completed', {
+                paypalOrderId: data.orderID,
+                paypalPayerId: captureResult.payer?.payer_id,
+                paypalCapture: {
+                  id: captureResult.purchase_units?.[0]?.payments?.captures?.[0]
+                    ?.id,
+                  status:
+                    captureResult.purchase_units?.[0]?.payments?.captures?.[0]
+                      ?.status,
+                },
+              });
+
+              // Clean up
+              localStorage.removeItem('currentOrder');
+
+              // Show success and redirect
+              toast.success('Payment completed successfully!');
+              clearCheckout();
+              navigate('/', {
+                state: {
+                  orderCompleted: true,
+                  orderId: orderRef._id,
+                },
+              });
+            } catch (error) {
+              console.error('Payment processing error:', error);
+              toast.error(
+                'Failed to complete payment: ' +
+                  (error.message || 'Unknown error')
+              );
+              setPaymentStatus('pending');
+            }
+          },
+
+          // Error handler
+          onError: (err) => {
+            console.error('PayPal error:', err);
+            toast.error('Payment process failed. Please try again.');
+            setPaymentStatus('pending');
+
+            // Try to update order status
+            try {
+              let orderRef = createdOrder;
+              if (!orderRef) {
+                const savedOrder = localStorage.getItem('currentOrder');
+                if (savedOrder) {
+                  orderRef = JSON.parse(savedOrder);
+                }
+              }
+
+              if (orderRef) {
+                updatePaymentStatus(orderRef._id, 'failed').catch((error) =>
+                  console.error('Failed to update payment status:', error)
+                );
+              }
+            } catch (e) {
+              console.error('Error handling payment failure:', e);
+            }
+          },
+
+          // Cancel handler
+          onCancel: () => {
+            toast.info('Payment canceled');
+            setPaymentStatus('pending');
+
+            // Try to update order status
+            try {
+              let orderRef = createdOrder;
+              if (!orderRef) {
+                const savedOrder = localStorage.getItem('currentOrder');
+                if (savedOrder) {
+                  orderRef = JSON.parse(savedOrder);
+                }
+              }
+
+              if (orderRef) {
+                updatePaymentStatus(orderRef._id, 'pending').catch((error) =>
+                  console.error('Failed to update payment status:', error)
+                );
+              }
+            } catch (e) {
+              console.error('Error handling payment cancellation:', e);
+            }
+          },
+        });
+
+        // Render the button
+        button
+          .render(paypalButtonRef.current)
+          .then(() => {
+            console.log('PayPal button rendered successfully');
+            setPaypalButtonRendered(true);
+          })
+          .catch((err) => {
+            console.error('PayPal render error:', err);
+            toast.error(
+              'Failed to initialize PayPal button. Please try refreshing the page.'
+            );
+          });
+      } catch (err) {
+        console.error('Error setting up PayPal button:', err);
+        toast.error(
+          'Failed to load PayPal. Please try another payment method.'
+        );
+      }
+    }
+
+    // Reset the rendered state when payment method changes or address becomes incomplete
+    if (paymentMethod !== 'paypal' || !addressCompleted) {
+      setPaypalButtonRendered(false);
+    }
+
+    // Clean up function
+    return () => {
+      // Don't manually remove the button through DOM manipulation
+      // Just reset the state so React can handle it properly
+      if (paymentMethod !== 'paypal') {
+        setPaypalButtonRendered(false);
+      }
+    };
+  }, [
+    paypalLoaded,
+    paymentMethod,
+    addressCompleted,
+    paypalButtonRendered,
+    selectedService,
+    createOrder,
+    updatePaymentStatus,
+    clearCheckout,
+    navigate,
+    prepareOrderData,
+    createdOrder,
+  ]);
+
+  // Function to check if popups are allowed
+  const ensurePopupsAllowed = () => {
+    try {
+      // Create a test popup
+      const testPopup = window.open(
+        'about:blank',
+        '_blank',
+        'width=1,height=1'
+      );
+
+      // Check if popup was blocked
+      if (
+        !testPopup ||
+        testPopup.closed ||
+        typeof testPopup.closed === 'undefined'
+      ) {
+        toast.error('Please allow popups for this site to use PayPal checkout');
+        return false;
+      }
+
+      // Close the test popup
+      testPopup.close();
+      return true;
+    } catch (error) {
+      console.error('Error checking popups:', error);
+      return false;
+    }
+  };
+
   // Handle errors
   useEffect(() => {
     if (orderError) {
@@ -91,6 +421,29 @@ const CheckoutPage = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  // Updated payment method change handler
+  const handlePaymentMethodChange = (method) => {
+    // Don't do anything if attempting to set the same payment method
+    if (method === paymentMethod) {
+      return;
+    }
+
+    if (method === 'paypal') {
+      if (!ensurePopupsAllowed()) {
+        // If popups are blocked, default to card payment
+        method = 'card';
+        toast.warning(
+          'Please allow popups to use PayPal checkout. Using card payment instead.'
+        );
+      }
+    }
+
+    // Reset any created order since payment method changed
+    setCreatedOrder(null);
+    // Finally, set the payment method
+    setPaymentMethod(method);
   };
 
   const handleInputChange = (e) => {
@@ -142,28 +495,35 @@ const CheckoutPage = () => {
       setTimeSlot(newTimeSlot);
       return;
     }
+
+    // Payment method - use the new handler
+    if (name === 'paymentMethod') {
+      handlePaymentMethodChange(value);
+      return;
+    }
   };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    // Validate form
+    // If PayPal is selected, don't proceed with form submission logic
+    if (paymentMethod === 'paypal') {
+      // PayPal button handles the payment flow
+      return;
+    }
+
+    // Validate form for card payment
     setShowErrors(true);
+
+    // Validate address first
+    if (!isAddressValid()) {
+      toast.error('Please complete all address fields');
+      return;
+    }
 
     // Validate card details
     if (!validateCardDetails()) {
       toast.error('Please complete all payment fields correctly');
-      return;
-    }
-
-    // Validate address
-    if (
-      !address.street ||
-      !address.city ||
-      !address.zipCode ||
-      !address.country
-    ) {
-      toast.error('Please complete all address fields');
       return;
     }
 
@@ -399,11 +759,16 @@ const CheckoutPage = () => {
 
               {/* Right Column */}
               <div className="space-y-6">
-                {/* Location Section */}
+                {/* Location Section - Added required for payment indicator */}
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-lg font-semibold mb-4 flex items-center">
-                    <MapPin size={20} className="mr-2 text-blue-600" />
-                    Service Location
+                  <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <MapPin size={20} className="mr-2 text-blue-600" />
+                      Service Location
+                    </div>
+                    <span className="text-xs text-red-600 font-medium">
+                      * Required for payment
+                    </span>
                   </h2>
 
                   <div className="space-y-4">
@@ -467,79 +832,159 @@ const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {/* Payment Information */}
+                {/* Payment Method Selection */}
                 <div className="border-b border-gray-200 pb-6">
                   <h2 className="text-lg font-semibold mb-4 flex items-center">
                     <CreditCard size={20} className="mr-2 text-blue-600" />
-                    Payment Details
+                    Payment Method
                   </h2>
 
-                  <div className="space-y-4">
-                    <Input
-                      type="text"
-                      placeholder="Name on Card"
-                      name="name"
-                      value={cardDetails.name}
-                      onChange={handleInputChange}
-                      error={
-                        showErrors && !cardDetails.name
-                          ? 'Name is required'
-                          : null
+                  <div className="flex gap-4 mb-4">
+                    <div
+                      className={`border p-4 rounded-lg cursor-pointer flex-grow ${
+                        paymentMethod === 'card'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300'
+                      }`}
+                      onClick={() =>
+                        handleInputChange({
+                          target: { name: 'paymentMethod', value: 'card' },
+                        })
                       }
-                      required
-                    />
-
-                    <Input
-                      type="text"
-                      placeholder="Card Number"
-                      name="cardNumber"
-                      value={cardDetails.cardNumber}
-                      onChange={handleInputChange}
-                      error={
-                        showErrors &&
-                        (!cardDetails.cardNumber ||
-                          cardDetails.cardNumber.replace(/\s/g, '').length !==
-                            16)
-                          ? 'Valid card number is required'
-                          : null
+                    >
+                      <div className="flex items-center">
+                        <div
+                          className={`w-4 h-4 rounded-full ${
+                            paymentMethod === 'card'
+                              ? 'bg-blue-500'
+                              : 'border border-gray-300'
+                          } mr-2`}
+                        ></div>
+                        <span>Credit Card</span>
+                      </div>
+                    </div>
+                    <div
+                      className={`border p-4 rounded-lg cursor-pointer flex-grow ${
+                        paymentMethod === 'paypal'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300'
+                      }`}
+                      onClick={() =>
+                        handleInputChange({
+                          target: { name: 'paymentMethod', value: 'paypal' },
+                        })
                       }
-                      required
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        type="text"
-                        placeholder="MM/YY"
-                        name="expiryDate"
-                        value={cardDetails.expiryDate}
-                        onChange={handleInputChange}
-                        error={
-                          showErrors &&
-                          (!cardDetails.expiryDate ||
-                            !/^\d{2}\/\d{2}$/.test(cardDetails.expiryDate))
-                            ? 'Valid expiry date required'
-                            : null
-                        }
-                        required
-                      />
-
-                      <Input
-                        type="text"
-                        placeholder="CVV"
-                        name="cvv"
-                        value={cardDetails.cvv}
-                        onChange={handleInputChange}
-                        error={
-                          showErrors &&
-                          (!cardDetails.cvv ||
-                            !/^\d{3,4}$/.test(cardDetails.cvv))
-                            ? 'Valid CVV required'
-                            : null
-                        }
-                        required
-                      />
+                    >
+                      <div className="flex items-center">
+                        <div
+                          className={`w-4 h-4 rounded-full ${
+                            paymentMethod === 'paypal'
+                              ? 'bg-blue-500'
+                              : 'border border-gray-300'
+                          } mr-2`}
+                        ></div>
+                        <span>PayPal</span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Payment Details */}
+                  {paymentMethod === 'card' && (
+                    <div className="space-y-4">
+                      <Input
+                        type="text"
+                        placeholder="Name on Card"
+                        name="name"
+                        value={cardDetails.name}
+                        onChange={handleInputChange}
+                        error={
+                          showErrors && !cardDetails.name
+                            ? 'Name is required'
+                            : null
+                        }
+                        required
+                      />
+
+                      <Input
+                        type="text"
+                        placeholder="Card Number"
+                        name="cardNumber"
+                        value={cardDetails.cardNumber}
+                        onChange={handleInputChange}
+                        error={
+                          showErrors &&
+                          (!cardDetails.cardNumber ||
+                            cardDetails.cardNumber.replace(/\s/g, '').length !==
+                              16)
+                            ? 'Valid card number is required'
+                            : null
+                        }
+                        required
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          type="text"
+                          placeholder="MM/YY"
+                          name="expiryDate"
+                          value={cardDetails.expiryDate}
+                          onChange={handleInputChange}
+                          error={
+                            showErrors &&
+                            (!cardDetails.expiryDate ||
+                              !/^\d{2}\/\d{2}$/.test(cardDetails.expiryDate))
+                              ? 'Valid expiry date required'
+                              : null
+                          }
+                          required
+                        />
+
+                        <Input
+                          type="text"
+                          placeholder="CVV"
+                          name="cvv"
+                          value={cardDetails.cvv}
+                          onChange={handleInputChange}
+                          error={
+                            showErrors &&
+                            (!cardDetails.cvv ||
+                              !/^\d{3,4}$/.test(cardDetails.cvv))
+                              ? 'Valid CVV required'
+                              : null
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PayPal Button Container - Using React conditional rendering instead of DOM manipulation */}
+                  {paymentMethod === 'paypal' && (
+                    <div className="mt-4">
+                      {!paypalLoaded && (
+                        <div className="flex items-center justify-center p-6">
+                          <Loader className="animate-spin mr-2" />
+                          <span>Loading PayPal...</span>
+                        </div>
+                      )}
+
+                      {paypalLoaded && !addressCompleted && (
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                          <p className="font-medium">
+                            Please complete your address information before
+                            proceeding with payment.
+                          </p>
+                        </div>
+                      )}
+
+                      {paypalLoaded && addressCompleted && (
+                        <div
+                          id="paypal-button-container"
+                          ref={paypalButtonRef}
+                        ></div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Order Summary */}
@@ -564,26 +1009,40 @@ const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={paymentStatus !== 'pending' || orderLoading}
-                  className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center justify-center"
-                >
-                  {paymentStatus === 'pending' ? (
-                    'Confirm Order'
-                  ) : paymentStatus === 'processing' ? (
-                    <>
-                      <Loader size={20} className="mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={20} className="mr-2" />
-                      Order Confirmed!
-                    </>
-                  )}
-                </button>
+                {/* Submit Button (only for card payments) - With address validation */}
+                {paymentMethod === 'card' && (
+                  <button
+                    type="submit"
+                    disabled={
+                      paymentStatus !== 'pending' ||
+                      orderLoading ||
+                      !addressCompleted
+                    }
+                    className={`w-full py-3 rounded-lg font-medium flex items-center justify-center ${
+                      !addressCompleted
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : paymentStatus !== 'pending' || orderLoading
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-black text-white hover:bg-gray-800 transition-colors'
+                    }`}
+                  >
+                    {!addressCompleted ? (
+                      'Please complete address'
+                    ) : paymentStatus === 'pending' ? (
+                      'Confirm Order'
+                    ) : paymentStatus === 'processing' ? (
+                      <>
+                        <Loader size={20} className="mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={20} className="mr-2" />
+                        Order Confirmed!
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </form>
           </div>
