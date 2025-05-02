@@ -14,17 +14,19 @@ export const createOrder = async (req, res) => {
       scheduledDate,
       timeSlot,
       paymentMethod,
+      paypalOrderId, // New field for PayPal
     } = req.body;
 
     console.log('💻 Create Order Request:');
     console.log('Service ID:', serviceId);
     console.log('Selected Options:', JSON.stringify(selectedOptions, null, 2));
+    console.log('Payment Method:', paymentMethod);
 
     if (
-      !serviceId ||
-      !selectedOptions ||
-      !Array.isArray(selectedOptions) ||
-      selectedOptions.length === 0
+        !serviceId ||
+        !selectedOptions ||
+        !Array.isArray(selectedOptions) ||
+        selectedOptions.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -50,7 +52,7 @@ export const createOrder = async (req, res) => {
     service.options.forEach((option) => {
       optionsMap.set(option._id.toString(), option);
       console.log(
-        `Option ID map entry: ${option._id.toString()} -> ${option.name}`
+          `Option ID map entry: ${option._id.toString()} -> ${option.name}`
       );
     });
 
@@ -67,7 +69,7 @@ export const createOrder = async (req, res) => {
         // If not found, try to find it by matching string versions
         if (!serviceOption) {
           console.log(
-            'Option not found in map, trying to find by ID matching...'
+              'Option not found in map, trying to find by ID matching...'
           );
 
           serviceOption = service.options.find((opt) => {
@@ -83,11 +85,11 @@ export const createOrder = async (req, res) => {
           // If still not found, log available options and throw error
           console.log('Not Available option IDs:');
           service.options.forEach((opt) =>
-            console.log(`- ${opt._id} (${opt.name})`)
+              console.log(`- ${opt._id} (${opt.name})`)
           );
 
           throw new Error(
-            `Option with ID ${option.optionId} not found in this service`
+              `Option with ID ${option.optionId} not found in this service`
           );
         }
 
@@ -99,6 +101,14 @@ export const createOrder = async (req, res) => {
           price: serviceOption.price,
           quantity: option.quantity,
         });
+      }
+
+      // Prepare payment details based on payment method
+      const paymentDetails = {};
+
+      // If PayPal payment, store PayPal order ID
+      if (paymentMethod === 'paypal' && paypalOrderId) {
+        paymentDetails.paypalOrderId = paypalOrderId;
       }
 
       // Create the order
@@ -113,6 +123,9 @@ export const createOrder = async (req, res) => {
         scheduledDate: scheduledDate || new Date(),
         timeSlot: timeSlot || { start: '09:00', end: '12:00' },
         paymentMethod: paymentMethod || 'card',
+        paymentStatus: paymentMethod === 'paypal' ? 'processing' : 'pending',
+        paymentDetails:
+            Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
       });
 
       await order.save();
@@ -136,14 +149,103 @@ export const createOrder = async (req, res) => {
   }
 };
 
+// Handle payment status updates including PayPal
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const {
+      paymentStatus,
+      paypalOrderId,
+      paypalPayerId,
+      paypalCapture,
+      transactionId,
+    } = req.body;
+
+    if (
+        !paymentStatus ||
+        !['pending', 'processing', 'completed', 'failed', 'refunded'].includes(
+            paymentStatus
+        )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment status',
+      });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Check if the order belongs to the current user
+    if (order.user.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: This order does not belong to you',
+      });
+    }
+
+    // Update payment status
+    order.paymentStatus = paymentStatus;
+
+    // Update payment details if provided
+    if (!order.paymentDetails) {
+      order.paymentDetails = {};
+    }
+
+    // Set timestamp for payment update
+    order.paymentDetails.timestamp = new Date();
+
+    // Update PayPal specific details if available
+    if (order.paymentMethod === 'paypal') {
+      if (paypalOrderId) {
+        order.paymentDetails.paypalOrderId = paypalOrderId;
+      }
+
+      if (paypalPayerId) {
+        order.paymentDetails.paypalPayerId = paypalPayerId;
+      }
+
+      if (paypalCapture) {
+        order.paymentDetails.paypalCapture = paypalCapture;
+      }
+    }
+
+    // Set transaction ID if provided
+    if (transactionId) {
+      order.paymentDetails.transactionId = transactionId;
+    }
+
+    // Save order with updated payment info
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment status updated successfully',
+      order,
+    });
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating payment status',
+    });
+  }
+};
+
 // Get order by ID
 export const getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
 
     const order = await Order.findById(orderId)
-      .populate('service', 'name description price type')
-      .populate('user', 'name email');
+        .populate('service', 'name description price type')
+        .populate('user', 'name email');
 
     if (!order) {
       return res.status(404).json({
@@ -160,15 +262,94 @@ export const getOrderById = async (req, res) => {
       });
     }
 
+    // Return success without any message that would trigger a toast
     res.status(200).json({
       success: true,
       order,
+
+      message: undefined,
     });
   } catch (error) {
     console.error('Error getting order details:', error);
     res.status(500).json({
       success: false,
       message: 'Error retrieving order details',
+    });
+  }
+};
+// Verify PayPal payment complete
+export const verifyPayPalPayment = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { paypalOrderId, paypalPayerId, captureId, captureStatus } = req.body;
+
+    if (!paypalOrderId || !captureId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing PayPal details',
+      });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Check if the order belongs to the current user
+    if (order.user.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: This order does not belong to you',
+      });
+    }
+
+    // Ensure it's a PayPal payment
+    if (order.paymentMethod !== 'paypal') {
+      return res.status(400).json({
+        success: false,
+        message: 'This order is not using PayPal payment',
+      });
+    }
+
+    // Update order with PayPal details
+    if (!order.paymentDetails) {
+      order.paymentDetails = {};
+    }
+
+    order.paymentDetails.paypalOrderId = paypalOrderId;
+    order.paymentDetails.paypalPayerId = paypalPayerId;
+    order.paymentDetails.paypalCapture = {
+      id: captureId,
+      status: captureStatus,
+    };
+    order.paymentDetails.timestamp = new Date();
+
+    // Update payment status based on capture status
+    if (captureStatus === 'COMPLETED') {
+      order.paymentStatus = 'completed';
+      // Order status will be updated automatically by the pre-save middleware
+    } else if (captureStatus === 'DECLINED') {
+      order.paymentStatus = 'failed';
+    } else {
+      order.paymentStatus = 'processing';
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'PayPal payment verification processed',
+      order,
+    });
+  } catch (error) {
+    console.error('Error verifying PayPal payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying PayPal payment',
     });
   }
 };
@@ -186,10 +367,10 @@ export const getUserOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const orders = await Order.find(query)
-      .populate('service', 'name type')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+        .populate('service', 'name type')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
 
@@ -219,14 +400,14 @@ export const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     if (
-      !status ||
-      ![
-        'pending',
-        'confirmed',
-        'in-progress',
-        'completed',
-        'cancelled',
-      ].includes(status)
+        !status ||
+        ![
+          'pending',
+          'confirmed',
+          'in-progress',
+          'completed',
+          'cancelled',
+        ].includes(status)
     ) {
       return res.status(400).json({
         success: false,
@@ -315,62 +496,6 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-// Handle payment status updates
-export const updatePaymentStatus = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { paymentStatus } = req.body;
-
-    if (
-      !paymentStatus ||
-      !['pending', 'processing', 'completed', 'failed'].includes(paymentStatus)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid payment status',
-      });
-    }
-
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
-    }
-
-    // Check if the order belongs to the current user
-    if (order.user.toString() !== req.userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Unauthorized: This order does not belong to you',
-      });
-    }
-
-    order.paymentStatus = paymentStatus;
-
-    // If payment completed, update order status to confirmed
-    if (paymentStatus === 'completed' && order.status === 'pending') {
-      order.status = 'confirmed';
-    }
-
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Payment status updated successfully',
-      order,
-    });
-  } catch (error) {
-    console.error('Error updating payment status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating payment status',
-    });
-  }
-};
-
 // Get admin dashboard orders (admin only)
 export const getAdminOrders = async (req, res) => {
   try {
@@ -392,11 +517,11 @@ export const getAdminOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const orders = await Order.find(query)
-      .populate('user', 'name email')
-      .populate('service', 'name type')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+        .populate('user', 'name email')
+        .populate('service', 'name type')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
 
