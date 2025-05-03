@@ -102,6 +102,7 @@ const ProviderModal = ({ provider, services, onClose, onSave }) => {
     setFormData((prev) => {
       const updatedOptions = { ...prev.serviceOptions };
 
+      // Ensure we have options for this service
       if (!updatedOptions[serviceId]) {
         const service = services.find((s) => s._id === serviceId);
         if (service) {
@@ -114,11 +115,40 @@ const ProviderModal = ({ provider, services, onClose, onSave }) => {
         }
       }
 
-      updatedOptions[serviceId] = updatedOptions[serviceId].map((option) =>
-        option.optionId === optionId
-          ? { ...option, price: parseFloat(newPrice) || 0 }
-          : option
+      // Check if the option already exists in the array
+      const optionExists = updatedOptions[serviceId]?.some(
+          (opt) => opt.optionId === optionId ||
+              (opt.optionId && optionId &&
+                  opt.optionId.toString() === optionId.toString())
       );
+
+      if (optionExists) {
+        // Update existing option
+        updatedOptions[serviceId] = updatedOptions[serviceId].map((option) =>
+            (option.optionId === optionId ||
+                (option.optionId && optionId &&
+                    option.optionId.toString() === optionId.toString()))
+                ? { ...option, price: parseFloat(newPrice) || 0 }
+                : option
+        );
+      } else {
+        // Find the service and its option to create a new custom option
+        const service = services.find((s) => s._id === serviceId);
+        if (service) {
+          const serviceOption = service.options.find(
+              (opt) => opt._id === optionId || opt._id.toString() === optionId.toString()
+          );
+
+          if (serviceOption && updatedOptions[serviceId]) {
+            updatedOptions[serviceId].push({
+              optionId: serviceOption._id,
+              name: serviceOption.name,
+              price: parseFloat(newPrice) || 0,
+              description: serviceOption.description,
+            });
+          }
+        }
+      }
 
       return {
         ...prev,
@@ -350,43 +380,48 @@ const ProviderModal = ({ provider, services, onClose, onSave }) => {
                         </h4>
                         <div className="space-y-2">
                           {service.options.map((option) => {
-                            const customOption = formData.serviceOptions[
-                              service._id
-                            ]?.find((o) => o.optionId === option._id);
+                            const customOption = formData.serviceOptions[service._id]?.find(
+                                (o) => o.optionId === option._id ||
+                                    (o.optionId && option._id &&
+                                        o.optionId.toString() === option._id.toString())
+                            );
+
+                            // Calculate the default price from service option
+                            const defaultPrice = parseFloat(option.price.replace('€', '')) || 0;
+
+                            // Use custom price if it exists, otherwise use default
+                            const currentPrice = customOption?.price !== undefined ?
+                                customOption.price :
+                                defaultPrice;
+
                             return (
-                              <div
-                                key={option._id}
-                                className="flex items-center gap-4"
-                              >
-                                <span className="w-8">{option.icon}</span>
-                                <span className="w-40">{option.name}</span>
-                                <span className="text-gray-500">
-                                  Default: {option.price}
-                                </span>
-                                <div className="flex items-center">
-                                  <span>€</span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={
-                                      customOption?.price ??
-                                      parseFloat(
-                                        option.price.replace('€', '')
-                                      ) ??
-                                      0
-                                    }
-                                    onChange={(e) =>
-                                      handleOptionPriceChange(
-                                        service._id,
-                                        option._id,
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-24 border rounded-md px-2 py-1 ml-1"
-                                  />
+                                <div
+                                    key={option._id}
+                                    className="flex items-center gap-4"
+                                >
+                                  <span className="w-8">{option.icon}</span>
+                                  <span className="w-40">{option.name}</span>
+                                  <span className="text-gray-500">
+                                        Default: {option.price}
+                                  </span>
+                                  <div className="flex items-center">
+                                    <span>€</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={currentPrice}
+                                        onChange={(e) =>
+                                            handleOptionPriceChange(
+                                                service._id,
+                                                option._id,
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-24 border rounded-md px-2 py-1 ml-1"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
                             );
                           })}
                         </div>

@@ -188,11 +188,10 @@ export const getProvidersForService = async (req, res) => {
         console.log('Service offering found:', serviceOffering);
 
         // Process options with price formatting
-        // In providerController.js - getProvidersForService (update the relevant part)
         const processedOptions = service.options.map((serviceOption) => {
           // Find if provider has a custom option for this service option
           const providerOption = serviceOffering.options.find(
-            (po) => po.optionId.toString() === serviceOption._id.toString()
+              (po) => po.optionId.toString() === serviceOption._id.toString()
           );
 
           if (providerOption) {
@@ -200,11 +199,11 @@ export const getProvidersForService = async (req, res) => {
             return {
               _id: serviceOption._id,
               id: serviceOption._id,
-              name: serviceOption.name, // Use service name
-              icon: serviceOption.icon, // Use service icon
-              price: `€${providerOption.price}`, // Use provider's custom price
+              name: serviceOption.name,
+              icon: serviceOption.icon,
+              price: `€${providerOption.price}`, // Format price with Euro symbol
               priceValue: Number(providerOption.price),
-              description: serviceOption.description, // Use service description
+              description: serviceOption.description,
             };
           } else {
             // Use default service price
@@ -372,7 +371,6 @@ export const createProvider = async (req, res) => {
   }
 };
 // In providerController.js - updateProvider
-// In providerController.js - updateProvider
 export const updateProvider = async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -380,6 +378,7 @@ export const updateProvider = async (req, res) => {
 
     console.log('Updating provider:', providerId);
     console.log('Updates received:', JSON.stringify(updates, null, 2));
+    console.log('User ID from token:', req.userId);
 
     const provider = await Provider.findById(providerId);
     if (!provider) {
@@ -389,12 +388,22 @@ export const updateProvider = async (req, res) => {
       });
     }
 
-    // Check permissions
-    if (provider.user.toString() !== req.userId && !req.user?.isAdmin) {
+    // Find user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Check permissions - handle case where provider.user might be undefined
+    const isOwner = provider.user && (provider.user.toString() === req.userId);
+
+    console.log('Is admin:', isAdmin);
+    console.log('Is owner:', isOwner);
+    console.log('Provider user:', provider.user);
+
+    // Only allow update if admin or owner
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message:
-          'Unauthorized: You do not have permission to update this provider',
+        message: 'Unauthorized: You do not have permission to update this provider',
       });
     }
 
@@ -418,10 +427,10 @@ export const updateProvider = async (req, res) => {
         const customOptions = updates.serviceOptions[serviceId] || [];
 
         // Map custom options to the correct format
-        customOptions.forEach((customOption) => {
+        for (const customOption of customOptions) {
           // Verify this option exists in the service
           const serviceOption = service.options.find(
-            (opt) => opt._id.toString() === customOption.optionId
+              (opt) => opt._id.toString() === customOption.optionId
           );
 
           if (serviceOption) {
@@ -432,7 +441,7 @@ export const updateProvider = async (req, res) => {
               description: serviceOption.description, // Use service description
             });
           }
-        });
+        }
 
         serviceOfferings.push(serviceOffering);
       }
@@ -443,9 +452,9 @@ export const updateProvider = async (req, res) => {
     }
 
     const updatedProvider = await Provider.findByIdAndUpdate(
-      providerId,
-      updates,
-      { new: true, runValidators: true }
+        providerId,
+        updates,
+        { new: true, runValidators: true }
     ).populate('serviceOfferings.service', 'name description type options');
 
     res.status(200).json({
@@ -455,6 +464,7 @@ export const updateProvider = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating provider:', error);
+    console.error('Error details:', error.message, error.stack);
     res.status(500).json({
       success: false,
       message: error.message || 'Error updating provider',
