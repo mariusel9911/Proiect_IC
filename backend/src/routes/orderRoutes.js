@@ -11,20 +11,20 @@ import {
   updatePaymentStatus,
   verifyPayPalPayment,
   getAdminOrders,
-  deleteOrder, // Add this import
+  deleteOrder,
 } from '../controllers/orderController.js';
 
 const router = express.Router();
 
-// All routes need authentication
+// Public routes that require only authentication
 router.use(verifyToken);
 
 // User order routes
 router.post('/', createOrder);
 router.get('/my-orders', getUserOrders);
-
-// This route should come after any routes with additional path segments
 router.get('/:id', getOrderById);
+
+// These routes check for admin OR order owner in the controller
 router.put('/:orderId/status', updateOrderStatus);
 router.put('/:orderId/cancel', cancelOrder);
 router.put('/:orderId/payment', updatePaymentStatus);
@@ -32,8 +32,8 @@ router.put('/:orderId/payment', updatePaymentStatus);
 // PayPal specific route
 router.post('/:orderId/verify-paypal', verifyPayPalPayment);
 
-// Admin routes
+// Admin only routes
 router.get('/admin/all', isAdmin, getAdminOrders);
-router.delete('/:orderId', isAdmin, deleteOrder); // Add this line
+router.delete('/:orderId', isAdmin, deleteOrder);
 
 export const orderRoutes = router;

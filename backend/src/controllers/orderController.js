@@ -413,7 +413,7 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Update order status
+// In orderController.js - updateOrderStatus function
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -444,11 +444,16 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Check if the order belongs to the current user
-    if (order.user.toString() !== req.userId) {
+    // Check if the user is admin (directly from the database)
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Allow if user is admin OR the order owner
+    if (!isAdmin && order.user.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: This order does not belong to you',
+        message:
+          'Unauthorized: You do not have permission to update this order',
       });
     }
 
@@ -468,8 +473,7 @@ export const updateOrderStatus = async (req, res) => {
     });
   }
 };
-
-// Cancel order
+// In orderController.js - cancelOrder function
 export const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -483,11 +487,16 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // Check if the order belongs to the current user
-    if (order.user.toString() !== req.userId) {
+    // Check if the user is admin (directly from the database)
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Allow if user is admin OR the order owner
+    if (!isAdmin && order.user.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: This order does not belong to you',
+        message:
+          'Unauthorized: You do not have permission to cancel this order',
       });
     }
 
