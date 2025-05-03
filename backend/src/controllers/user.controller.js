@@ -1,0 +1,227 @@
+import { User } from '../models/user.model.js';
+
+// Get all users (admin only)
+export const getAllUsers = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const users = await User.find()
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await User.countDocuments();
+
+        res.status(200).json({
+            success: true,
+            users,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / parseInt(limit)),
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching users',
+        });
+    }
+};
+
+// Get user by ID (admin only)
+export const getUserById = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await User.findById(userId).select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            user,
+        });
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching user',
+        });
+    }
+};
+
+// Update user (admin only)
+export const updateUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const updates = req.body;
+
+        // Prevent updating password through this route
+        delete updates.password;
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            updates,
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'User updated successfully',
+            user,
+        });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating user',
+        });
+    }
+};
+
+// Delete user (admin only)
+export const deleteUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Prevent deleting the current admin
+        if (userId === req.userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'You cannot delete your own account',
+            });
+        }
+
+        const user = await User.findByIdAndDelete(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'User deleted successfully',
+        });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting user',
+        });
+    }
+};
+
+export const getAdminUsers = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const users = await User.find({})
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await User.countDocuments({});
+
+        res.status(200).json({
+            success: true,
+            users,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching admin users:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching users'
+        });
+    }
+};
+
+export const updateUserByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        // Validate the user ID
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID is required'
+            });
+        }
+
+        // Find user to confirm admin access
+        const adminUser = await User.findById(req.userId);
+        if (!adminUser || !adminUser.isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized: Admin access required'
+            });
+        }
+
+        // Find the user to update
+        const userToUpdate = await User.findById(id);
+        if (!userToUpdate) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Update allowed fields only
+        const allowedUpdates = ['name', 'isVerified', 'isAdmin'];
+        for (const key in updates) {
+            if (allowedUpdates.includes(key)) {
+                userToUpdate[key] = updates[key];
+            }
+        }
+
+        await userToUpdate.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'User updated successfully',
+            user: {
+                _id: userToUpdate._id,
+                name: userToUpdate.name,
+                email: userToUpdate.email,
+                isVerified: userToUpdate.isVerified,
+                isAdmin: userToUpdate.isAdmin,
+                createdAt: userToUpdate.createdAt,
+                lastLogin: userToUpdate.lastLogin
+            }
+        });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating user'
+        });
+    }
+};
