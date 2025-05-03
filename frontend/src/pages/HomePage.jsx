@@ -92,6 +92,15 @@ const HomePage = () => {
             My very special address...
           </div>
           <div className="flex items-center gap-3">
+            {user.isAdmin && (
+                <Link
+                    to="/admin/dashboard"
+                    className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+                >
+                  Admin Dashboard
+                </Link>
+            )}
+
             <Link
               to="/orders"
               className="hidden md:inline-block px-4 py-2 text-blue-600 border border-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
