@@ -416,6 +416,38 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // In adminStore.js - add this function
+  deleteOrder: async (orderId) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      const response = await axios.delete(`${API_URL}/orders/${orderId}`, {
+        withCredentials: true,
+      });
+
+      if (response.data.success) {
+        // Remove order from orders list
+        const updatedOrders = get().adminOrders.filter(
+          (order) => order._id !== orderId
+        );
+
+        set({
+          adminOrders: updatedOrders,
+          isLoading: false,
+          error: null,
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      set({
+        isLoading: false,
+        error: error.response?.data?.message || 'Failed to delete order',
+      });
+      throw error;
+    }
+  },
+
   // Common actions
   setCurrentItem: (itemType, item) => {
     switch (itemType) {
