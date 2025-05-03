@@ -8,9 +8,10 @@ import { config } from 'dotenv';
 import { connectDB } from './mongodb/connectDB.js';
 
 import { authRoutes } from './routes/auth/auth.routes.js';
-import { serviceRoutes } from './routes/auth/serviceRoutes.js';
-import { providerRoutes } from './routes/auth/providerRoutes.js';
-import { orderRoutes } from './routes/auth/orderRoutes.js';
+import { serviceRoutes } from './routes/serviceRoutes.js';
+import { providerRoutes } from './routes/providerRoutes.js';
+import { orderRoutes } from './routes/orderRoutes.js';
+import { userRoutes } from './routes/user.routes.js';
 
 // Load .env environment
 config();
@@ -41,6 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handler (MUST come after all routes)
 app.use((err, req, res, next) => {
