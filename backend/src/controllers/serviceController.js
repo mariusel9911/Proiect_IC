@@ -2,203 +2,236 @@ import { Service } from '../models/service.model.js';
 
 // Get all services for homepage
 export const getAllServices = async (req, res) => {
-    try {
-        const services = await Service.find({ isActive: true });
-        res.status(200).json({
-            success: true,
-            services,
-        });
-    } catch (error) {
-        console.error('Error fetching services:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching services',
-        });
-    }
+  try {
+    const services = await Service.find({ isActive: true });
+    res.status(200).json({
+      success: true,
+      services,
+    });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching services',
+    });
+  }
 };
 
 // Get a single service by ID
 export const getServiceById = async (req, res) => {
-    try {
-        const { serviceId } = req.params;
-        const service = await Service.findById(serviceId);
+  try {
+    const { serviceId } = req.params;
+    const service = await Service.findById(serviceId);
 
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: 'Service not found',
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            service,
-        });
-    } catch (error) {
-        console.error('Error fetching service:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching service',
-        });
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
     }
+
+    res.status(200).json({
+      success: true,
+      service,
+    });
+  } catch (error) {
+    console.error('Error fetching service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching service',
+    });
+  }
 };
 
-// Create a new service (admin only)
+// In serviceController.js
 export const createService = async (req, res) => {
-    try {
-        const { name, description, type, price, options } = req.body;
+  try {
+    console.log('=== CREATE SERVICE START ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User object:', req.user);
+    console.log('Is admin?', req.user?.isAdmin);
 
-        if (!name || !description || !type || !options || !Array.isArray(options)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide all required fields',
-            });
-        }
+    const { name, description, type, price, options } = req.body;
 
-        // Check if user is admin
-        if (!req.user.isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: 'Unauthorized: Admin access required',
-            });
-        }
+    // Log what we received
+    console.log('Extracted values:');
+    console.log('- name:', name);
+    console.log('- description:', description);
+    console.log('- type:', type);
+    console.log('- price:', price);
+    console.log('- options:', JSON.stringify(options, null, 2));
 
-        const service = new Service({
-            name,
-            description,
-            type,
-            price: price || 'FREE',
-            options,
-        });
-
-        await service.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Service created successfully',
-            service,
-        });
-    } catch (error) {
-        console.error('Error creating service:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error creating service',
-        });
+    // Validate required fields
+    if (!name || !description || !type || !options || !Array.isArray(options)) {
+      console.log('Validation failed - missing required fields');
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields',
+      });
     }
+
+    // Check if user is admin
+    if (!req.user?.isAdmin) {
+      console.log('Admin check failed');
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Admin access required',
+      });
+    }
+
+    console.log('Creating new service with data:');
+    const serviceData = {
+      name,
+      description,
+      type,
+      price: price || 'FREE',
+      options,
+    };
+    console.log(JSON.stringify(serviceData, null, 2));
+
+    const service = new Service(serviceData);
+
+    console.log('Saving service to database...');
+    await service.save();
+    console.log('Service saved successfully:', service._id);
+
+    res.status(201).json({
+      success: true,
+      message: 'Service created successfully',
+      service,
+    });
+
+    console.log('=== CREATE SERVICE END ===');
+  } catch (error) {
+    console.error('=== CREATE SERVICE ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+
+    // If it's a Mongoose validation error, log the details
+    if (error.name === 'ValidationError') {
+      console.error('Validation errors:', error.errors);
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error creating service',
+    });
+  }
 };
 
 // Update a service (admin only)
 export const updateService = async (req, res) => {
-    try {
-        const { serviceId } = req.params;
-        const updates = req.body;
+  try {
+    const { serviceId } = req.params;
+    const updates = req.body;
 
-        // Check if user is admin
-        if (!req.user.isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: 'Unauthorized: Admin access required',
-            });
-        }
-
-        const service = await Service.findByIdAndUpdate(serviceId, updates, {
-            new: true,
-            runValidators: true,
-        });
-
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: 'Service not found',
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Service updated successfully',
-            service,
-        });
-    } catch (error) {
-        console.error('Error updating service:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error updating service',
-        });
+    // Check if user is admin
+    if (!req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Admin access required',
+      });
     }
+
+    const service = await Service.findByIdAndUpdate(serviceId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Service updated successfully',
+      service,
+    });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating service',
+    });
+  }
 };
 
 // Delete a service (admin only)
 export const deleteService = async (req, res) => {
-    try {
-        const { serviceId } = req.params;
+  try {
+    const { serviceId } = req.params;
 
-        // Check if user is admin
-        if (!req.user.isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: 'Unauthorized: Admin access required',
-            });
-        }
-
-        const service = await Service.findByIdAndDelete(serviceId);
-
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: 'Service not found',
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Service deleted successfully',
-        });
-    } catch (error) {
-        console.error('Error deleting service:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error deleting service',
-        });
+    // Check if user is admin
+    if (!req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Admin access required',
+      });
     }
+
+    const service = await Service.findByIdAndDelete(serviceId);
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Service deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting service',
+    });
+  }
 };
 
 // Search services
 export const searchServices = async (req, res) => {
-    try {
-        const { query } = req.query;
+  try {
+    const { query } = req.query;
 
-        if (!query) {
-            return res.status(400).json({
-                success: false,
-                message: 'Search query is required',
-            });
-        }
-
-        const services = await Service.find({
-            $and: [
-                { isActive: true },
-                {
-                    $or: [
-                        { name: { $regex: query, $options: 'i' } },
-                        { description: { $regex: query, $options: 'i' } },
-                        { type: { $regex: query, $options: 'i' } },
-                        { 'options.name': { $regex: query, $options: 'i' } },
-                    ],
-                },
-            ],
-        });
-
-        res.status(200).json({
-            success: true,
-            services,
-        });
-    } catch (error) {
-        console.error('Error searching services:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error searching services',
-        });
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required',
+      });
     }
+
+    const services = await Service.find({
+      $and: [
+        { isActive: true },
+        {
+          $or: [
+            { name: { $regex: query, $options: 'i' } },
+            { description: { $regex: query, $options: 'i' } },
+            { type: { $regex: query, $options: 'i' } },
+            { 'options.name': { $regex: query, $options: 'i' } },
+          ],
+        },
+      ],
+    });
+
+    res.status(200).json({
+      success: true,
+      services,
+    });
+  } catch (error) {
+    console.error('Error searching services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching services',
+    });
+  }
 };
 
 // Seed initial services (for development)

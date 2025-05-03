@@ -1,502 +1,527 @@
+// ProviderModal.jsx
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const ProviderModal = ({ provider, services, onClose, onSave }) => {
-    const [formData, setFormData] = useState({
-        name: '',
-        title: '',
-        description: '',
-        email: '',
-        phone: '',
-        type: 'person',
-        services: [],
-        location: {
-            address: '',
-            city: '',
-            zipCode: '',
-            country: '',
-        },
-        isActive: true,
-        isVerified: false,
-        isPopular: false,
-    });
+  const [formData, setFormData] = useState({
+    name: '',
+    title: '',
+    description: '',
+    email: '',
+    phone: '',
+    type: 'person',
+    services: [],
+    serviceOptions: {},
+    location: {
+      address: '',
+      city: '',
+      zipCode: '',
+      country: '',
+    },
+    availability: [
+      { day: 'Monday', startTime: '09:00', endTime: '17:00' },
+      { day: 'Tuesday', startTime: '09:00', endTime: '17:00' },
+      { day: 'Wednesday', startTime: '09:00', endTime: '17:00' },
+      { day: 'Thursday', startTime: '09:00', endTime: '17:00' },
+      { day: 'Friday', startTime: '09:00', endTime: '17:00' },
+    ],
+    isActive: true,
+    isVerified: false,
+    isPopular: false,
+  });
 
-    const [serviceOptions, setServiceOptions] = useState({});
-    const [currentServiceId, setCurrentServiceId] = useState('');
+  useEffect(() => {
+    if (provider) {
+      const serviceOptions = {};
+      const serviceIds = [];
 
-    // Populate form with provider data when editing
-    useEffect(() => {
-        if (provider) {
-            // Extract service IDs from serviceOfferings
-            const providerServices = provider.serviceOfferings
-                ? provider.serviceOfferings.map(offering => offering.service)
-                : [];
+      provider.serviceOfferings?.forEach((offering) => {
+        const serviceId =
+          typeof offering.service === 'object'
+            ? offering.service._id
+            : offering.service;
+        serviceIds.push(serviceId);
 
-            // Prepare service options from serviceOfferings
-            const options = {};
-            if (provider.serviceOfferings) {
-                provider.serviceOfferings.forEach(offering => {
-                    if (offering.options && offering.options.length > 0) {
-                        options[offering.service] = offering.options;
-                    }
-                });
-            }
-
-            setFormData({
-                name: provider.name || '',
-                title: provider.title || '',
-                description: provider.description || '',
-                email: provider.email || '',
-                phone: provider.phone || '',
-                type: provider.type || 'person',
-                services: providerServices,
-                location: provider.location || {
-                    address: '',
-                    city: '',
-                    zipCode: '',
-                    country: '',
-                },
-                isActive: provider.isActive !== undefined ? provider.isActive : true,
-                isVerified: provider.isVerified || false,
-                isPopular: provider.isPopular || false,
-            });
-
-            setServiceOptions(options);
-        }
-    }, [provider]);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => {
-            if (name.includes('.')) {
-                const [parent, child] = name.split('.');
-                return {
-                    ...prev,
-                    [parent]: {
-                        ...prev[parent],
-                        [child]: type === 'checkbox' ? checked : value,
-                    },
-                };
-            }
-
-            return {
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value,
-            };
-        });
-    };
-
-    const handleServiceSelect = (e) => {
-        setCurrentServiceId(e.target.value);
-    };
-
-    const addService = () => {
-        if (!currentServiceId || formData.services.includes(currentServiceId)) {
-            return;
-        }
-
-        setFormData({
-            ...formData,
-            services: [...formData.services, currentServiceId],
-        });
-
-        // Initialize service options if not already
-        if (!serviceOptions[currentServiceId]) {
-            setServiceOptions({
-                ...serviceOptions,
-                [currentServiceId]: [],
-            });
-        }
-    };
-
-    const removeService = (serviceId) => {
-        setFormData({
-            ...formData,
-            services: formData.services.filter(id => id !== serviceId),
-        });
-
-        // Remove service options as well
-        const updatedOptions = { ...serviceOptions };
-        delete updatedOptions[serviceId];
-        setServiceOptions(updatedOptions);
-    };
-
-    // Add or update service option
-    const handleServiceOption = (serviceId, optionData) => {
-        // Check if this option already exists
-        const currentOptions = serviceOptions[serviceId] || [];
-        const existingIndex = currentOptions.findIndex(
-            opt => opt.optionId === optionData.optionId
-        );
-
-        let updatedOptions = [...currentOptions];
-
-        if (existingIndex >= 0) {
-            // Update existing option
-            updatedOptions[existingIndex] = optionData;
+        if (offering.options && offering.options.length > 0) {
+          serviceOptions[serviceId] = offering.options.map((opt) => ({
+            optionId: opt.optionId,
+            name: opt.name,
+            price: opt.price,
+            description: opt.description,
+          }));
         } else {
-            // Add new option
-            updatedOptions.push(optionData);
+          const service = services.find((s) => s._id === serviceId);
+          if (service) {
+            serviceOptions[serviceId] = service.options.map((option) => ({
+              optionId: option._id,
+              name: option.name,
+              price: parseFloat(option.price.replace('€', '')) || 0,
+              description: option.description,
+            }));
+          }
         }
+      });
 
-        setServiceOptions({
-            ...serviceOptions,
-            [serviceId]: updatedOptions,
-        });
-    };
+      setFormData({
+        ...provider,
+        services: serviceIds,
+        serviceOptions: serviceOptions,
+      });
+    }
+  }, [provider, services]);
 
-    const removeServiceOption = (serviceId, optionId) => {
-        const updatedOptions = serviceOptions[serviceId].filter(
-            option => option.optionId !== optionId
+  const handleServiceSelection = (serviceId) => {
+    const updatedServices = formData.services.includes(serviceId)
+      ? formData.services.filter((id) => id !== serviceId)
+      : [...formData.services, serviceId];
+
+    const updatedServiceOptions = { ...formData.serviceOptions };
+
+    if (!formData.services.includes(serviceId)) {
+      const service = services.find((s) => s._id === serviceId);
+      if (service && !updatedServiceOptions[serviceId]) {
+        updatedServiceOptions[serviceId] = service.options.map((option) => ({
+          optionId: option._id,
+          name: option.name,
+          price: parseFloat(option.price.replace('€', '')) || 0,
+          description: option.description,
+        }));
+      }
+    } else {
+      delete updatedServiceOptions[serviceId];
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      services: updatedServices,
+      serviceOptions: updatedServiceOptions,
+    }));
+  };
+
+  const handleOptionPriceChange = (serviceId, optionId, newPrice) => {
+    setFormData((prev) => {
+      const updatedOptions = { ...prev.serviceOptions };
+
+      // Ensure we have options for this service
+      if (!updatedOptions[serviceId]) {
+        const service = services.find((s) => s._id === serviceId);
+        if (service) {
+          updatedOptions[serviceId] = service.options.map((option) => ({
+            optionId: option._id,
+            name: option.name,
+            price: parseFloat(option.price.replace('€', '')) || 0,
+            description: option.description,
+          }));
+        }
+      }
+
+      // Check if the option already exists in the array
+      const optionExists = updatedOptions[serviceId]?.some(
+          (opt) => opt.optionId === optionId ||
+              (opt.optionId && optionId &&
+                  opt.optionId.toString() === optionId.toString())
+      );
+
+      if (optionExists) {
+        // Update existing option
+        updatedOptions[serviceId] = updatedOptions[serviceId].map((option) =>
+            (option.optionId === optionId ||
+                (option.optionId && optionId &&
+                    option.optionId.toString() === optionId.toString()))
+                ? { ...option, price: parseFloat(newPrice) || 0 }
+                : option
         );
+      } else {
+        // Find the service and its option to create a new custom option
+        const service = services.find((s) => s._id === serviceId);
+        if (service) {
+          const serviceOption = service.options.find(
+              (opt) => opt._id === optionId || opt._id.toString() === optionId.toString()
+          );
 
-        setServiceOptions({
-            ...serviceOptions,
-            [serviceId]: updatedOptions,
-        });
+          if (serviceOption && updatedOptions[serviceId]) {
+            updatedOptions[serviceId].push({
+              optionId: serviceOption._id,
+              name: serviceOption.name,
+              price: parseFloat(newPrice) || 0,
+              description: serviceOption.description,
+            });
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        serviceOptions: updatedOptions,
+      };
+    });
+  };
+
+  // Rest of the code remains the same as in the second version
+  const handleAvailabilityChange = (index, field, value) => {
+    const updatedAvailability = [...formData.availability];
+    updatedAvailability[index] = {
+      ...updatedAvailability[index],
+      [field]: value,
     };
+    setFormData({ ...formData, availability: updatedAvailability });
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+  const handleLocationChange = (field, value) => {
+    setFormData({
+      ...formData,
+      location: {
+        ...formData.location,
+        [field]: value,
+      },
+    });
+  };
 
-        // Format provider data for submission
-        const submitData = {
-            ...formData,
-            serviceOptions, // Include service options
-        };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
 
-        onSave(submitData);
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between px-6 py-4 border-b">
-                    <h2 className="text-xl font-semibold text-gray-800">
-                        {provider ? 'Edit Provider' : 'Create New Provider'}
-                    </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                                Provider Name *
-                            </label>
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                                Title/Position *
-                            </label>
-                            <input
-                                type="text"
-                                id="title"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                required
-                                placeholder="e.g. Cleaning Specialist"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                Email *
-                            </label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone
-                            </label>
-                            <input
-                                type="text"
-                                id="phone"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                                Provider Type *
-                            </label>
-                            <select
-                                id="type"
-                                name="type"
-                                value={formData.type}
-                                onChange={handleChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            >
-                                <option value="person">Individual Person</option>
-                                <option value="company">Company</option>
-                            </select>
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                                Description *
-                            </label>
-                            <textarea
-                                id="description"
-                                name="description"
-                                value={formData.description}
-                                onChange={handleChange}
-                                required
-                                rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-
-                        {/* Location Info */}
-                        <div className="md:col-span-2">
-                            <h3 className="text-lg font-medium text-gray-800 mb-2">Location</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="location.address" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Address
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="location.address"
-                                        name="location.address"
-                                        value={formData.location.address}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="location.city" className="block text-sm font-medium text-gray-700 mb-1">
-                                        City
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="location.city"
-                                        name="location.city"
-                                        value={formData.location.city}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="location.zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                                        ZIP Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="location.zipCode"
-                                        name="location.zipCode"
-                                        value={formData.location.zipCode}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="location.country" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Country
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="location.country"
-                                        name="location.country"
-                                        value={formData.location.country}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Services Section */}
-                        <div className="md:col-span-2">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-lg font-medium text-gray-800">Services Offered</h3>
-                                <div className="flex items-center space-x-4">
-                                    <label className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="isActive"
-                                            checked={formData.isActive}
-                                            onChange={handleChange}
-                                            className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                        />
-                                        <span className="ml-2 text-sm text-gray-700">Active</span>
-                                    </label>
-                                    <label className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="isVerified"
-                                            checked={formData.isVerified}
-                                            onChange={handleChange}
-                                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        />
-                                        <span className="ml-2 text-sm text-gray-700">Verified</span>
-                                    </label>
-                                    <label className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            name="isPopular"
-                                            checked={formData.isPopular}
-                                            onChange={handleChange}
-                                            className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                                        />
-                                        <span className="ml-2 text-sm text-gray-700">Popular</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Add Service */}
-                            <div className="flex items-end space-x-2 mb-4">
-                                <div className="flex-grow">
-                                    <label htmlFor="serviceSelect" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Add Service
-                                    </label>
-                                    <select
-                                        id="serviceSelect"
-                                        value={currentServiceId}
-                                        onChange={handleServiceSelect}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    >
-                                        <option value="">Select a service...</option>
-                                        {services.map(service => (
-                                            <option
-                                                key={service._id}
-                                                value={service._id}
-                                                disabled={formData.services.includes(service._id)}
-                                            >
-                                                {service.name} ({service.type})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={addService}
-                                    disabled={!currentServiceId || formData.services.includes(currentServiceId)}
-                                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed"
-                                >
-                                    <Plus size={18} className="inline mr-1" />
-                                    Add
-                                </button>
-                            </div>
-
-                            {/* Services List */}
-                            {formData.services.length > 0 ? (
-                                <div className="border rounded-md overflow-hidden">
-                                    <table className="min-w-full divide-y divide-gray-200">
-                                        <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Service Name
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Type
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Custom Options
-                                            </th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                        {formData.services.map(serviceId => {
-                                            const service = services.find(s => s._id === serviceId);
-                                            if (!service) return null;
-
-                                            return (
-                                                <tr key={serviceId}>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {service.name}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {service.type}
-                                                    </td>
-                                                    <td className="px-4 py-4 text-sm text-gray-500">
-                                                        {serviceOptions[serviceId]?.length || 0} custom options
-                                                        {serviceOptions[serviceId]?.length > 0 && (
-                                                            <button
-                                                                type="button"
-                                                                className="ml-2 text-indigo-600 hover:text-indigo-900"
-                                                                onClick={() => {
-                                                                    // Show modal or expand to edit options
-                                                                    // For simplicity, just log for now
-                                                                    console.log("Edit options for", service.name);
-                                                                }}
-                                                            >
-                                                                <Edit size={14} className="inline" />
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeService(serviceId)}
-                                                            className="text-red-600 hover:text-red-900"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="py-4 text-center text-sm text-gray-500 border rounded-md">
-                                    No services added yet
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex justify-end space-x-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
-                        >
-                            {provider ? 'Update Provider' : 'Create Provider'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+          <h2 className="text-2xl font-semibold">
+            {provider ? 'Edit Provider' : 'Add New Provider'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X size={24} />
+          </button>
         </div>
-    );
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email *
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2"
+                placeholder="e.g., Professional Cleaner"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type *
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) =>
+                  setFormData({ ...formData, type: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2"
+                required
+              >
+                <option value="person">Individual</option>
+                <option value="company">Company</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description *
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className="w-full border rounded-md px-3 py-2"
+              rows="3"
+              required
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <h3 className="text-lg font-medium mb-3">Location</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={formData.location.address}
+                  onChange={(e) =>
+                    handleLocationChange('address', e.target.value)
+                  }
+                  className="w-full border rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={formData.location.city}
+                  onChange={(e) => handleLocationChange('city', e.target.value)}
+                  className="w-full border rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ZIP Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.location.zipCode}
+                  onChange={(e) =>
+                    handleLocationChange('zipCode', e.target.value)
+                  }
+                  className="w-full border rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={formData.location.country}
+                  onChange={(e) =>
+                    handleLocationChange('country', e.target.value)
+                  }
+                  className="w-full border rounded-md px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Services Selection with Custom Pricing */}
+          <div>
+            <h3 className="text-lg font-medium mb-3">Services Offered</h3>
+            <div className="space-y-4">
+              {services?.map((service) => (
+                <div key={service._id} className="border rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      id={`service-${service._id}`}
+                      checked={formData.services.includes(service._id)}
+                      onChange={() => handleServiceSelection(service._id)}
+                      className="mr-2"
+                    />
+                    <label
+                      htmlFor={`service-${service._id}`}
+                      className="font-medium"
+                    >
+                      {service.name}
+                    </label>
+                  </div>
+
+                  {formData.services.includes(service._id) &&
+                    service.options && (
+                      <div className="ml-6 mt-2">
+                        <h4 className="font-medium mb-2">
+                          Custom Prices for Options:
+                        </h4>
+                        <div className="space-y-2">
+                          {service.options.map((option) => {
+                            const customOption = formData.serviceOptions[service._id]?.find(
+                                (o) => o.optionId === option._id ||
+                                    (o.optionId && option._id &&
+                                        o.optionId.toString() === option._id.toString())
+                            );
+
+                            // Calculate the default price from service option
+                            const defaultPrice = parseFloat(option.price.replace('€', '')) || 0;
+
+                            // Use custom price if it exists, otherwise use default
+                            const currentPrice = customOption?.price !== undefined ?
+                                customOption.price :
+                                defaultPrice;
+
+                            return (
+                                <div
+                                    key={option._id}
+                                    className="flex items-center gap-4"
+                                >
+                                  <span className="w-8">{option.icon}</span>
+                                  <span className="w-40">{option.name}</span>
+                                  <span className="text-gray-500">
+                                        Default: {option.price}
+                                  </span>
+                                  <div className="flex items-center">
+                                    <span>€</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={currentPrice}
+                                        onChange={(e) =>
+                                            handleOptionPriceChange(
+                                                service._id,
+                                                option._id,
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-24 border rounded-md px-2 py-1 ml-1"
+                                    />
+                                  </div>
+                                </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Availability */}
+          <div>
+            <h3 className="text-lg font-medium mb-3">Availability</h3>
+            <div className="space-y-2">
+              {formData.availability.map((slot, index) => (
+                <div key={slot.day} className="flex items-center gap-4">
+                  <span className="w-24">{slot.day}</span>
+                  <input
+                    type="time"
+                    value={slot.startTime}
+                    onChange={(e) =>
+                      handleAvailabilityChange(
+                        index,
+                        'startTime',
+                        e.target.value
+                      )
+                    }
+                    className="border rounded-md px-2 py-1"
+                  />
+                  <span>to</span>
+                  <input
+                    type="time"
+                    value={slot.endTime}
+                    onChange={(e) =>
+                      handleAvailabilityChange(index, 'endTime', e.target.value)
+                    }
+                    className="border rounded-md px-2 py-1"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Status Flags */}
+          <div className="flex gap-6">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) =>
+                  setFormData({ ...formData, isActive: e.target.checked })
+                }
+                className="mr-2"
+              />
+              Active
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.isVerified}
+                onChange={(e) =>
+                  setFormData({ ...formData, isVerified: e.target.checked })
+                }
+                className="mr-2"
+              />
+              Verified
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.isPopular}
+                onChange={(e) =>
+                  setFormData({ ...formData, isPopular: e.target.checked })
+                }
+                className="mr-2"
+              />
+              Popular
+            </label>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+            >
+              {provider ? 'Update Provider' : 'Create Provider'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 export default ProviderModal;
