@@ -1,5 +1,7 @@
+// In serviceRoutes.js
 import express from 'express';
-import { verifyToken } from "../middleware/verifyToken.js";
+import { verifyToken } from '../middleware/verifyToken.js';
+import { isAdmin } from '../middleware/adminCheck.js';
 import {
   getAllServices,
   getServiceById,
@@ -7,7 +9,6 @@ import {
   updateService,
   deleteService,
   searchServices,
-  // seedServices,
 } from '../controllers/serviceController.js';
 
 const router = express.Router();
@@ -18,11 +19,8 @@ router.get('/search', searchServices);
 router.get('/:serviceId', getServiceById);
 
 // Protected routes (admin only)
-router.post('/', verifyToken, createService);
-router.put('/:serviceId', verifyToken, updateService);
-router.delete('/:serviceId', verifyToken, deleteService);
-
-// Development route for seeding data
-// router.post('/seed', seedServices);
+router.post('/', verifyToken, isAdmin, createService);
+router.put('/:serviceId', verifyToken, isAdmin, updateService);
+router.delete('/:serviceId', verifyToken, isAdmin, deleteService);
 
 export const serviceRoutes = router;
