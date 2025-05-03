@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken } from '../../middleware/verifyToken.js';
+import { verifyToken } from '../middleware/verifyToken.js';
 import {
   createOrder,
   getUserOrders,
@@ -9,7 +9,8 @@ import {
   updatePaymentStatus,
   verifyPayPalPayment,
   getAdminOrders,
-} from '../../controllers/orderContoller.js';
+} from '../controllers/orderContoller.js';
+import {isAdmin} from "../middleware/adminCheck.js";
 
 const router = express.Router();
 
@@ -29,6 +30,6 @@ router.put('/:orderId/payment', updatePaymentStatus);
 router.post('/:orderId/verify-paypal', verifyPayPalPayment);
 
 // Admin routes
-router.get('/admin/all', getAdminOrders);
+router.get('/admin/all', verifyToken, isAdmin, getAdminOrders);
 
 export const orderRoutes = router;
