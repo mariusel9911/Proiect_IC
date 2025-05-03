@@ -3,6 +3,7 @@ import { Search, Eye, Check, X as XIcon, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAdminStore } from '../../store/adminStore';
+import OrderDetailsModal from '../../components/modals/OrderDetailsModal';
 
 const AdminOrdersPanel = () => {
     const {
@@ -17,6 +18,7 @@ const AdminOrdersPanel = () => {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
 
     // Fetch orders when pagination or status filter changes
     useEffect(() => {
@@ -29,6 +31,15 @@ const AdminOrdersPanel = () => {
             toast.error(error);
         }
     }, [error]);
+
+    const handleViewOrderDetails = (orderId) => {
+        setSelectedOrderId(orderId);
+    };
+
+    // Add this function to close the modal
+    const handleCloseOrderModal = () => {
+        setSelectedOrderId(null);
+    };
 
     const handleUpdateStatus = async (orderId, status) => {
         try {
@@ -264,13 +275,13 @@ const AdminOrdersPanel = () => {
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex space-x-2">
-                                            <Link
-                                                to={`/orders/${order._id}`}
+                                            <button
+                                                onClick={() => handleViewOrderDetails(order._id)}
                                                 className="text-indigo-600 hover:text-indigo-900"
                                                 title="View Details"
                                             >
                                                 <Eye size={18} />
-                                            </Link>
+                                            </button>
                                             {order.status === 'pending' && (
                                                 <button
                                                     onClick={() => handleUpdateStatus(order._id, 'confirmed')}
@@ -362,6 +373,12 @@ const AdminOrdersPanel = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {selectedOrderId && (
+                <OrderDetailsModal
+                    orderId={selectedOrderId}
+                    onClose={handleCloseOrderModal}
+                />
             )}
         </div>
     );

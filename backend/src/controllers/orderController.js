@@ -1,5 +1,6 @@
 import { Order } from '../models/order.model.js';
 import { Service } from '../models/service.model.js';
+import { User } from '../models/user.model.js';
 
 // Create a new order/checkout
 export const createOrder = async (req, res) => {
@@ -239,15 +240,19 @@ export const updatePaymentStatus = async (req, res) => {
 };
 
 // In orderController.js at line 258
+// Update getOrderById function in orderController.js
 export const getOrderById = async (req, res) => {
   try {
-    const orderId = req.params.id;
+    const orderId = req.params.id; // Using 'id' as the parameter name
+    console.log('Getting order details for ID:', orderId);
+
     const order = await Order.findById(orderId)
         .populate('user', 'name email')
         .populate('service', 'name description price type imageUrl')
         .exec();
 
     if (!order) {
+      console.log('Order not found with ID:', orderId);
       return res.status(404).json({
         success: false,
         message: 'Order not found'
@@ -257,9 +262,18 @@ export const getOrderById = async (req, res) => {
     // Find user to check if admin
     const user = await User.findById(req.userId);
     const isAdmin = user?.isAdmin || false;
-    const isOwner = req.userId && order.user && order.user._id.toString() === req.userId;
+    const isOwner = req.userId && order.user &&
+        (typeof order.user === 'object'
+            ? order.user._id.toString() === req.userId
+            : order.user.toString() === req.userId);
+
+    console.log('Request user ID:', req.userId);
+    console.log('Order user ID:', typeof order.user === 'object' ? order.user._id : order.user);
+    console.log('Is owner:', isOwner);
+    console.log('Is admin:', isAdmin);
 
     if (!isOwner && !isAdmin) {
+      console.log('Unauthorized access attempt');
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: You can only view your own orders'
