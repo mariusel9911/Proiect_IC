@@ -20,6 +20,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 // Initialize stores
 import { useServiceStore } from './store/serviceStore';
 import { useProviderStore } from './store/providerStore';
+import AdminDashboard from "./pages/Admin/AdminDashboard.jsx";
 
 // Protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -69,8 +70,8 @@ function App() {
 
     if (isCheckingAuth) return <LoadingSpinner />;
 
-    console.log('isAuthenticated', isAuthenticated);
-    console.log('user', user);
+    // console.log('isAuthenticated', isAuthenticated);
+    // console.log('user', user);
 
     return (
         <div className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative overflow-hidden">
@@ -165,6 +166,15 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <OrderDetailsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/dashboard/*"
+                    element={
+                        <ProtectedRoute>
+                            <AdminDashboard />
                         </ProtectedRoute>
                     }
                 />
