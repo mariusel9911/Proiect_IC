@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken } from '../../middleware/verifyToken.js';
+import { verifyToken } from '../middleware/verifyToken.js';
 import {
   getAllProviders,
   getProviderById,
@@ -8,7 +8,7 @@ import {
   updateProvider,
   addProviderReview,
   // seedProviders,
-} from '../../controllers/providerController.js';
+} from '../controllers/providerController.js';
 
 const router = express.Router();
 
