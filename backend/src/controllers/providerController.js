@@ -43,6 +43,7 @@ export const getAllProviders = async (req, res) => {
 };
 
 // Get provider by ID
+// In providerController.js - getProviderById
 export const getProviderById = async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -58,10 +59,22 @@ export const getProviderById = async (req, res) => {
       });
     }
 
+    // Log the raw data to see what's coming from the database
+    console.log('Raw provider data:', JSON.stringify(provider, null, 2));
+
     // Process service offerings to properly merge custom prices with service options
     const processedServiceOfferings = provider.serviceOfferings.map(
       (offering) => {
         const service = offering.service;
+
+        // Check if service exists and has options
+        if (!service || !service.options) {
+          console.error(
+            'Service or service options missing for offering:',
+            offering
+          );
+          return offering;
+        }
 
         // Create deep copy of service to avoid modifying the original
         const processedService = {
@@ -69,25 +82,30 @@ export const getProviderById = async (req, res) => {
           options: service.options.map((option) => {
             // Find if provider has a custom option for this service option
             const providerOption = offering.options.find(
-              (po) => po.optionId.toString() === option._id.toString()
+              (po) =>
+                po.optionId && po.optionId.toString() === option._id.toString()
             );
 
             if (providerOption) {
-              // Provider has custom option - use provider's price but keep service's other properties
+              // Make sure all required fields are present
               return {
-                ...option,
-                price: `€${providerOption.price}`, // Format provider price
-                priceValue: Number(providerOption.price), // Add raw numeric price for calculations
-                // You can override other properties if needed
+                _id: option._id,
+                name: providerOption.name || option.name,
+                icon: option.icon, // Always use service's icon
+                price: providerOption.price
+                  ? `€${providerOption.price}`
+                  : option.price,
                 description: providerOption.description || option.description,
+                priceValue:
+                  providerOption.price ||
+                  parseFloat(option.price.replace('€', '')),
               };
             }
 
-            // No custom option - add priceValue to service default option
-            const defaultPrice = option.price.replace('€', '');
+            // No custom option - use service defaults
             return {
               ...option,
-              priceValue: Number(defaultPrice),
+              priceValue: parseFloat(option.price.replace('€', '') || '0'),
             };
           }),
         };
@@ -97,6 +115,12 @@ export const getProviderById = async (req, res) => {
           service: processedService,
         };
       }
+    );
+
+    // Log the processed data
+    console.log(
+      'Processed provider data:',
+      JSON.stringify(processedServiceOfferings, null, 2)
     );
 
     // Replace original serviceOfferings with processed ones
@@ -119,9 +143,13 @@ export const getProviderById = async (req, res) => {
 };
 
 // Get providers for a specific service
+// In providerController.js - getProvidersForService
 export const getProvidersForService = async (req, res) => {
   try {
     const { serviceId } = req.params;
+
+    console.log('=== GET PROVIDERS FOR SERVICE ===');
+    console.log('Service ID:', serviceId);
 
     // First, get the service to have access to default options
     const service = await Service.findById(serviceId);
@@ -136,90 +164,88 @@ export const getProvidersForService = async (req, res) => {
     const providers = await Provider.find({
       'serviceOfferings.service': serviceId,
       isActive: true,
-    }).select('-reviews');
+    }).populate('serviceOfferings.service', 'name description type options');
+
+    console.log(`Found ${providers.length} providers for service`);
 
     // Create formatted provider data with service-specific information
-    const formattedProviders = providers.map((provider) => {
-      // Find the specific service offering for this service
-      const serviceOffering = provider.serviceOfferings.find(
-        (offering) => offering.service.toString() === serviceId
-      );
+    const formattedProviders = providers
+      .map((provider) => {
+        console.log(`Processing provider: ${provider.name}`);
 
-      // Process options with price formatting
-      const processedOptions = [];
+        // Find the specific service offering for this service
+        const serviceOffering = provider.serviceOfferings.find(
+          (offering) => offering.service._id.toString() === serviceId
+        );
 
-      if (
-        serviceOffering &&
-        serviceOffering.options &&
-        serviceOffering.options.length > 0
-      ) {
-        // Map service options to find matches
-        service.options.forEach((serviceOption) => {
+        if (!serviceOffering) {
+          console.log(
+            `No service offering found for provider ${provider.name}`
+          );
+          return null;
+        }
+
+        console.log('Service offering found:', serviceOffering);
+
+        // Process options with price formatting
+        // In providerController.js - getProvidersForService (update the relevant part)
+        const processedOptions = service.options.map((serviceOption) => {
           // Find if provider has a custom option for this service option
           const providerOption = serviceOffering.options.find(
             (po) => po.optionId.toString() === serviceOption._id.toString()
           );
 
           if (providerOption) {
-            // Provider has custom option - use provider's price but service's icon
-            processedOptions.push({
-              _id: providerOption.optionId,
-              id: providerOption.optionId,
-              name: providerOption.name,
-              price: `€${providerOption.price}`, // Format provider price
-              priceValue: Number(providerOption.price), // Add raw numeric price for calculations
-              icon: serviceOption.icon, // Keep service icon
-              description: providerOption.description,
-            });
+            // Use provider's custom price
+            return {
+              _id: serviceOption._id,
+              id: serviceOption._id,
+              name: serviceOption.name, // Use service name
+              icon: serviceOption.icon, // Use service icon
+              price: `€${providerOption.price}`, // Use provider's custom price
+              priceValue: Number(providerOption.price),
+              description: serviceOption.description, // Use service description
+            };
           } else {
-            // Provider doesn't have custom option - use service default
+            // Use default service price
             const defaultPrice = serviceOption.price.replace('€', '');
-            processedOptions.push({
-              ...serviceOption,
-              // Add raw numeric price for calculations
+            return {
+              ...serviceOption.toObject(),
+              id: serviceOption._id,
               priceValue: Number(defaultPrice),
-            });
+            };
           }
         });
-      } else {
-        // No custom options - use service defaults
-        service.options.forEach((option) => {
-          const defaultPrice = option.price.replace('€', '');
-          processedOptions.push({
-            ...option,
-            // Add raw numeric price for calculations
-            priceValue: Number(defaultPrice),
-          });
-        });
-      }
 
-      return {
-        _id: provider._id,
-        name: provider.name,
-        title: provider.title,
-        description: serviceOffering?.description || provider.description,
-        email: provider.email,
-        phone: provider.phone,
-        type: provider.type,
-        // price: provider.price,
-        location: provider.location,
-        rating: provider.rating,
-        isPopular: provider.isPopular,
-        isVerified: provider.isVerified,
-        image: provider.image,
-        // Use processed options
-        options: processedOptions,
-        availability: serviceOffering?.availability || provider.availability,
-        // Add reference to service
-        service: {
-          _id: service._id,
-          name: service.name,
-          description: service.description,
-          type: service.type,
-          options: processedOptions, // Include processed options in service too
-        },
-      };
-    });
+        console.log('Processed options:', processedOptions);
+
+        return {
+          _id: provider._id,
+          name: provider.name,
+          title: provider.title,
+          description: serviceOffering.description || provider.description,
+          email: provider.email,
+          phone: provider.phone,
+          type: provider.type,
+          location: provider.location,
+          rating: provider.rating,
+          isPopular: provider.isPopular,
+          isVerified: provider.isVerified,
+          image: provider.image,
+          options: processedOptions,
+          availability: serviceOffering.availability || provider.availability,
+          service: {
+            _id: service._id,
+            name: service.name,
+            description: service.description,
+            type: service.type,
+            options: processedOptions,
+          },
+        };
+      })
+      .filter((provider) => provider !== null);
+
+    console.log(`Returning ${formattedProviders.length} formatted providers`);
 
     res.status(200).json({
       success: true,
@@ -234,7 +260,6 @@ export const getProvidersForService = async (req, res) => {
     });
   }
 };
-
 // Create a new provider
 export const createProvider = async (req, res) => {
   try {
@@ -346,25 +371,17 @@ export const createProvider = async (req, res) => {
     });
   }
 };
-
-// Update provider
-// In providerController.js
+// In providerController.js - updateProvider
+// In providerController.js - updateProvider
 export const updateProvider = async (req, res) => {
   try {
-    console.log('=== UPDATE PROVIDER START ===');
-    console.log('Provider ID:', req.params.providerId);
-    console.log('User ID:', req.userId);
-    console.log('User object:', req.user);
-    console.log('Is Admin?', req.user?.isAdmin);
-    console.log('Update data:', JSON.stringify(req.body, null, 2));
-
     const { providerId } = req.params;
     const updates = req.body;
 
-    // Find the provider
-    const provider = await Provider.findById(providerId);
-    console.log('Provider found:', provider ? 'Yes' : 'No');
+    console.log('Updating provider:', providerId);
+    console.log('Updates received:', JSON.stringify(updates, null, 2));
 
+    const provider = await Provider.findById(providerId);
     if (!provider) {
       return res.status(404).json({
         success: false,
@@ -372,13 +389,8 @@ export const updateProvider = async (req, res) => {
       });
     }
 
-    console.log('Provider user ID:', provider.user);
-    console.log('Current user ID:', req.userId);
-    console.log('Is owner?', provider.user?.toString() === req.userId);
-
-    // Check if the provider belongs to the current user or if user is admin
-    if (provider.user?.toString() !== req.userId && !req.user?.isAdmin) {
-      console.log('Authorization check failed');
+    // Check permissions
+    if (provider.user.toString() !== req.userId && !req.user?.isAdmin) {
       return res.status(403).json({
         success: false,
         message:
@@ -386,50 +398,69 @@ export const updateProvider = async (req, res) => {
       });
     }
 
-    console.log('Authorization passed, proceeding with update...');
+    // Handle service offerings update
+    if (updates.services && updates.serviceOptions) {
+      const serviceOfferings = [];
 
-    // Handle service offerings update if provided
-    if (updates.services || updates.serviceOptions) {
-      console.log('Processing service offerings update...');
-      const serviceOfferings = [...provider.serviceOfferings];
+      for (const serviceId of updates.services) {
+        const service = await Service.findById(serviceId);
+        if (!service) {
+          console.log(`Service ${serviceId} not found, skipping...`);
+          continue;
+        }
 
-      // ... rest of the service offerings update logic ...
+        const serviceOffering = {
+          service: serviceId,
+          options: [],
+        };
+
+        // Get custom options for this service
+        const customOptions = updates.serviceOptions[serviceId] || [];
+
+        // Map custom options to the correct format
+        customOptions.forEach((customOption) => {
+          // Verify this option exists in the service
+          const serviceOption = service.options.find(
+            (opt) => opt._id.toString() === customOption.optionId
+          );
+
+          if (serviceOption) {
+            serviceOffering.options.push({
+              optionId: serviceOption._id,
+              name: serviceOption.name, // Use service name
+              price: customOption.price, // Use custom price
+              description: serviceOption.description, // Use service description
+            });
+          }
+        });
+
+        serviceOfferings.push(serviceOffering);
+      }
+
+      updates.serviceOfferings = serviceOfferings;
+      delete updates.services;
+      delete updates.serviceOptions;
     }
 
-    console.log('Updating provider...');
     const updatedProvider = await Provider.findByIdAndUpdate(
       providerId,
       updates,
       { new: true, runValidators: true }
-    );
-
-    console.log('Provider updated successfully');
+    ).populate('serviceOfferings.service', 'name description type options');
 
     res.status(200).json({
       success: true,
       message: 'Provider updated successfully',
       provider: updatedProvider,
     });
-
-    console.log('=== UPDATE PROVIDER END ===');
   } catch (error) {
-    console.error('=== UPDATE PROVIDER ERROR ===');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-
-    // If it's a Mongoose validation error, log the details
-    if (error.name === 'ValidationError') {
-      console.error('Validation errors:', error.errors);
-    }
-
+    console.error('Error updating provider:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error updating provider',
     });
   }
 };
-
 // Add a review to provider
 export const addProviderReview = async (req, res) => {
   try {
