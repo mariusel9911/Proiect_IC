@@ -238,42 +238,43 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// Get order by ID
+// In orderController.js at line 258
 export const getOrderById = async (req, res) => {
   try {
-    const { orderId } = req.params;
-
+    const orderId = req.params.id;
     const order = await Order.findById(orderId)
-        .populate('service', 'name description price type')
-        .populate('user', 'name email');
+        .populate('user', 'name email')
+        .populate('service', 'name description price type imageUrl')
+        .exec();
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found',
+        message: 'Order not found'
       });
     }
 
-    // Check if the order belongs to the current user or user is admin
-    if (order.user._id.toString() !== req.userId && !req.user.isAdmin) {
+    // Find user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+    const isOwner = req.userId && order.user && order.user._id.toString() === req.userId;
+
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: This order does not belong to you',
+        message: 'Unauthorized: You can only view your own orders'
       });
     }
 
-    // Return success without any message that would trigger a toast
     res.status(200).json({
       success: true,
-      order,
-
-      message: undefined,
+      order
     });
   } catch (error) {
     console.error('Error getting order details:', error);
     res.status(500).json({
       success: false,
-      message: 'Error retrieving order details',
+      message: 'Error getting order details'
     });
   }
 };
@@ -499,8 +500,8 @@ export const cancelOrder = async (req, res) => {
 // Get admin dashboard orders (admin only)
 export const getAdminOrders = async (req, res) => {
   try {
-    // Check if user is admin
-    if (!req.user.isAdmin) {
+    // Check if user is admin - this is a double check in case middleware fails
+    if (!req.user || !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Admin access required',
@@ -510,7 +511,7 @@ export const getAdminOrders = async (req, res) => {
     const { status, limit = 10, page = 1 } = req.query;
 
     const query = {};
-    if (status) {
+    if (status && status !== 'all') {
       query.status = status;
     }
 
