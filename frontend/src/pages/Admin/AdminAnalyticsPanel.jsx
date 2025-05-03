@@ -142,17 +142,33 @@ const AdminAnalyticsPanel = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Revenue by Service</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics.revenueByService}>
+            <BarChart
+              data={analytics.revenueByService}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="_id" />
-              <YAxis />
+              <XAxis type="number" />
+              <YAxis
+                dataKey="name"
+                type="category"
+                width={100}
+                tick={{ fontSize: 12 }}
+              />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#8884d8" name="Revenue" />
+              <Bar
+                dataKey="revenue"
+                fill="#8884d8"
+                name="Revenue"
+                label={{
+                  position: 'right',
+                  formatter: (value) => formatCurrency(value),
+                }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
-
         {/* Order Status Distribution */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">
