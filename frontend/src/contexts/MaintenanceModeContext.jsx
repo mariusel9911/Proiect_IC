@@ -1,12 +1,13 @@
 // src/contexts/MaintenanceModeContext.jsx
 import { createContext, useState, useEffect, useContext } from 'react';
 
+const LOCAL_STORAGE_KEY = 'adminSettings';
 const MaintenanceModeContext = createContext();
 
 export const MaintenanceModeProvider = ({ children }) => {
     const [isMaintenanceMode, setIsMaintenanceMode] = useState(() => {
         // Check localStorage for maintenance mode setting
-        const savedSettings = localStorage.getItem('adminSettings');
+        const savedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (savedSettings) {
             try {
                 const parsedSettings = JSON.parse(savedSettings);
