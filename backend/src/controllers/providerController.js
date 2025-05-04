@@ -143,13 +143,12 @@ export const getProviderById = async (req, res) => {
 };
 
 // Get providers for a specific service
-// In providerController.js - getProvidersForService
 export const getProvidersForService = async (req, res) => {
   try {
     const { serviceId } = req.params;
 
-    console.log('=== GET PROVIDERS FOR SERVICE ===');
-    console.log('Service ID:', serviceId);
+    // console.log('=== GET PROVIDERS FOR SERVICE ===');
+    // console.log('Service ID:', serviceId);
 
     // First, get the service to have access to default options
     const service = await Service.findById(serviceId);
@@ -166,85 +165,101 @@ export const getProvidersForService = async (req, res) => {
       isActive: true,
     }).populate('serviceOfferings.service', 'name description type options');
 
-    console.log(`Found ${providers.length} providers for service`);
+    // console.log(`Found ${providers.length} providers for service`);
 
     // Create formatted provider data with service-specific information
     const formattedProviders = providers
-      .map((provider) => {
-        console.log(`Processing provider: ${provider.name}`);
+        .map((provider) => {
+          try {
+            // console.log(`Processing provider: ${provider.name}`);
 
-        // Find the specific service offering for this service
-        const serviceOffering = provider.serviceOfferings.find(
-          (offering) => offering.service._id.toString() === serviceId
-        );
+            // Find the specific service offering for this service
+            const serviceOffering = provider.serviceOfferings?.find(
+                (offering) => offering?.service &&
+                    offering.service._id &&
+                    offering.service._id.toString() === serviceId
+            );
 
-        if (!serviceOffering) {
-          console.log(
-            `No service offering found for provider ${provider.name}`
-          );
-          return null;
-        }
+            if (!serviceOffering) {
+              // console.log(`No service offering found for provider ${provider.name}`);
+              return null;
+            }
 
-        console.log('Service offering found:', serviceOffering);
+            // console.log('Service offering found:', serviceOffering);
 
-        // Process options with price formatting
-        const processedOptions = service.options.map((serviceOption) => {
-          // Find if provider has a custom option for this service option
-          const providerOption = serviceOffering.options.find(
-              (po) => po.optionId.toString() === serviceOption._id.toString()
-          );
+            // Process options with price formatting - with added null checks
+            const processedOptions = service.options?.map((serviceOption) => {
+              if (!serviceOption || !serviceOption._id) {
+                return null; // Skip invalid options
+              }
 
-          if (providerOption) {
-            // Use provider's custom price
+              try {
+                // Find if provider has a custom option for this service option
+                const providerOption = serviceOffering.options && serviceOffering.options.length > 0 ?
+                    serviceOffering.options.find(
+                        (po) => po && po.optionId && serviceOption._id &&
+                            po.optionId.toString() === serviceOption._id.toString()
+                    ) : null;
+
+                if (providerOption) {
+                  // Use provider's custom price
+                  return {
+                    _id: serviceOption._id,
+                    id: serviceOption._id,
+                    name: serviceOption.name,
+                    icon: serviceOption.icon || '🧹', // Default icon if missing
+                    price: `€${providerOption.price}`, // Format price with Euro symbol
+                    priceValue: Number(providerOption.price) || 0,
+                    description: serviceOption.description || '',
+                  };
+                } else {
+                  // Use default service price
+                  const defaultPrice = serviceOption.price ? serviceOption.price.replace('€', '') : '0';
+                  return {
+                    ...serviceOption.toObject(),
+                    id: serviceOption._id,
+                    priceValue: Number(defaultPrice) || 0,
+                  };
+                }
+              } catch (optionError) {
+                console.error(`Error processing option for ${provider.name}:`, optionError);
+                return null;
+              }
+            }).filter(Boolean) || []; // Remove nulls and handle missing options array
+
+            // console.log('Processed options:', processedOptions);
+
             return {
-              _id: serviceOption._id,
-              id: serviceOption._id,
-              name: serviceOption.name,
-              icon: serviceOption.icon,
-              price: `€${providerOption.price}`, // Format price with Euro symbol
-              priceValue: Number(providerOption.price),
-              description: serviceOption.description,
+              _id: provider._id,
+              name: provider.name || 'Unnamed Provider',
+              title: provider.title || '',
+              description: serviceOffering.description || provider.description || '',
+              email: provider.email || '',
+              phone: provider.phone || '',
+              type: provider.type || 'person',
+              location: provider.location || {},
+              rating: provider.rating || 0,
+              isPopular: provider.isPopular || false,
+              isVerified: provider.isVerified || false,
+              image: provider.image || '/api/placeholder/80/80',
+              options: processedOptions,
+              availability: serviceOffering.availability || provider.availability || [],
+              service: {
+                _id: service._id,
+                name: service.name,
+                description: service.description,
+                type: service.type,
+                options: processedOptions,
+              },
             };
-          } else {
-            // Use default service price
-            const defaultPrice = serviceOption.price.replace('€', '');
-            return {
-              ...serviceOption.toObject(),
-              id: serviceOption._id,
-              priceValue: Number(defaultPrice),
-            };
+          } catch (providerError) {
+            console.error(`Error processing provider ${provider?.name || 'unknown'}:`, providerError);
+            return null;
           }
-        });
+        })
+        .filter((provider) => provider !== null);
 
-        console.log('Processed options:', processedOptions);
-
-        return {
-          _id: provider._id,
-          name: provider.name,
-          title: provider.title,
-          description: serviceOffering.description || provider.description,
-          email: provider.email,
-          phone: provider.phone,
-          type: provider.type,
-          location: provider.location,
-          rating: provider.rating,
-          isPopular: provider.isPopular,
-          isVerified: provider.isVerified,
-          image: provider.image,
-          options: processedOptions,
-          availability: serviceOffering.availability || provider.availability,
-          service: {
-            _id: service._id,
-            name: service.name,
-            description: service.description,
-            type: service.type,
-            options: processedOptions,
-          },
-        };
-      })
-      .filter((provider) => provider !== null);
-
-    console.log(`Returning ${formattedProviders.length} formatted providers`);
+    // console.log(`Returning ${formattedProviders.length} formatted providers`);
 
     res.status(200).json({
       success: true,
