@@ -24,10 +24,10 @@ export const createOrder = async (req, res) => {
     console.log('Payment Method:', paymentMethod);
 
     if (
-        !serviceId ||
-        !selectedOptions ||
-        !Array.isArray(selectedOptions) ||
-        selectedOptions.length === 0
+      !serviceId ||
+      !selectedOptions ||
+      !Array.isArray(selectedOptions) ||
+      selectedOptions.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -53,7 +53,7 @@ export const createOrder = async (req, res) => {
     service.options.forEach((option) => {
       optionsMap.set(option._id.toString(), option);
       console.log(
-          `Option ID map entry: ${option._id.toString()} -> ${option.name}`
+        `Option ID map entry: ${option._id.toString()} -> ${option.name}`
       );
     });
 
@@ -70,7 +70,7 @@ export const createOrder = async (req, res) => {
         // If not found, try to find it by matching string versions
         if (!serviceOption) {
           console.log(
-              'Option not found in map, trying to find by ID matching...'
+            'Option not found in map, trying to find by ID matching...'
           );
 
           serviceOption = service.options.find((opt) => {
@@ -86,11 +86,11 @@ export const createOrder = async (req, res) => {
           // If still not found, log available options and throw error
           console.log('Not Available option IDs:');
           service.options.forEach((opt) =>
-              console.log(`- ${opt._id} (${opt.name})`)
+            console.log(`- ${opt._id} (${opt.name})`)
           );
 
           throw new Error(
-              `Option with ID ${option.optionId} not found in this service`
+            `Option with ID ${option.optionId} not found in this service`
           );
         }
 
@@ -126,7 +126,7 @@ export const createOrder = async (req, res) => {
         paymentMethod: paymentMethod || 'card',
         paymentStatus: paymentMethod === 'paypal' ? 'processing' : 'pending',
         paymentDetails:
-            Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
+          Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
       });
 
       await order.save();
@@ -163,10 +163,10 @@ export const updatePaymentStatus = async (req, res) => {
     } = req.body;
 
     if (
-        !paymentStatus ||
-        !['pending', 'processing', 'completed', 'failed', 'refunded'].includes(
-            paymentStatus
-        )
+      !paymentStatus ||
+      !['pending', 'processing', 'completed', 'failed', 'refunded'].includes(
+        paymentStatus
+      )
     ) {
       return res.status(400).json({
         success: false,
@@ -247,28 +247,33 @@ export const getOrderById = async (req, res) => {
     console.log('Getting order details for ID:', orderId);
 
     const order = await Order.findById(orderId)
-        .populate('user', 'name email')
-        .populate('service', 'name description price type imageUrl')
-        .exec();
+      .populate('user', 'name email')
+      .populate('service', 'name description price type imageUrl')
+      .exec();
 
     if (!order) {
       console.log('Order not found with ID:', orderId);
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: 'Order not found',
       });
     }
 
     // Find user to check if admin
     const user = await User.findById(req.userId);
     const isAdmin = user?.isAdmin || false;
-    const isOwner = req.userId && order.user &&
-        (typeof order.user === 'object'
-            ? order.user._id.toString() === req.userId
-            : order.user.toString() === req.userId);
+    const isOwner =
+      req.userId &&
+      order.user &&
+      (typeof order.user === 'object'
+        ? order.user._id.toString() === req.userId
+        : order.user.toString() === req.userId);
 
     console.log('Request user ID:', req.userId);
-    console.log('Order user ID:', typeof order.user === 'object' ? order.user._id : order.user);
+    console.log(
+      'Order user ID:',
+      typeof order.user === 'object' ? order.user._id : order.user
+    );
     console.log('Is owner:', isOwner);
     console.log('Is admin:', isAdmin);
 
@@ -276,19 +281,19 @@ export const getOrderById = async (req, res) => {
       console.log('Unauthorized access attempt');
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: You can only view your own orders'
+        message: 'Unauthorized: You can only view your own orders',
       });
     }
 
     res.status(200).json({
       success: true,
-      order
+      order,
     });
   } catch (error) {
     console.error('Error getting order details:', error);
     res.status(500).json({
       success: false,
-      message: 'Error getting order details'
+      message: 'Error getting order details',
     });
   }
 };
@@ -382,10 +387,10 @@ export const getUserOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const orders = await Order.find(query)
-        .populate('service', 'name type')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
+      .populate('service', 'name type')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
 
@@ -408,21 +413,21 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Update order status
+// In orderController.js - updateOrderStatus function
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
     if (
-        !status ||
-        ![
-          'pending',
-          'confirmed',
-          'in-progress',
-          'completed',
-          'cancelled',
-        ].includes(status)
+      !status ||
+      ![
+        'pending',
+        'confirmed',
+        'in-progress',
+        'completed',
+        'cancelled',
+      ].includes(status)
     ) {
       return res.status(400).json({
         success: false,
@@ -439,11 +444,16 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Check if the order belongs to the current user
-    if (order.user.toString() !== req.userId) {
+    // Check if the user is admin (directly from the database)
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Allow if user is admin OR the order owner
+    if (!isAdmin && order.user.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: This order does not belong to you',
+        message:
+          'Unauthorized: You do not have permission to update this order',
       });
     }
 
@@ -463,8 +473,7 @@ export const updateOrderStatus = async (req, res) => {
     });
   }
 };
-
-// Cancel order
+// In orderController.js - cancelOrder function
 export const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -478,11 +487,16 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // Check if the order belongs to the current user
-    if (order.user.toString() !== req.userId) {
+    // Check if the user is admin (directly from the database)
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Allow if user is admin OR the order owner
+    if (!isAdmin && order.user.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: This order does not belong to you',
+        message:
+          'Unauthorized: You do not have permission to cancel this order',
       });
     }
 
@@ -532,11 +546,11 @@ export const getAdminOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const orders = await Order.find(query)
-        .populate('user', 'name email')
-        .populate('service', 'name type')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
+      .populate('user', 'name email')
+      .populate('service', 'name type')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
 
@@ -555,6 +569,45 @@ export const getAdminOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching orders',
+    });
+  }
+};
+
+// In orderController.js - add this function
+export const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the order first
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Check if user is admin
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Admin access required to delete orders',
+      });
+    }
+
+    // Delete the order
+    await Order.findByIdAndDelete(orderId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error deleting order',
     });
   }
 };

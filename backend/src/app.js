@@ -12,6 +12,7 @@ import { serviceRoutes } from './routes/serviceRoutes.js';
 import { providerRoutes } from './routes/providerRoutes.js';
 import { orderRoutes } from './routes/orderRoutes.js';
 import { userRoutes } from './routes/user.routes.js';
+import { analyticsRoutes } from './routes/analyticsRoutes.js';
 
 // Load .env environment
 config();
@@ -43,6 +44,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Error handler (MUST come after all routes)
 app.use((err, req, res, next) => {
