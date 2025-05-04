@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Loader, Lock, Mail } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link} from 'react-router-dom';
 import Input from '../components/Input.jsx';
 import { useAuthStore } from '../store/authStore';
+import { useMaintenanceMode } from '../contexts/MaintenanceModeContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const { login, isLoading, error } = useAuthStore();
+  const { login, isLoading, error, user } = useAuthStore();
+  const { isMaintenanceMode } = useMaintenanceMode();
+
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,10 +24,10 @@ const LoginPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-md w-full bg-white bg-opacity-50 backdrop-filter backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden"
+          className="max-w-md w-full bg-white dark:bg-gray-800 bg-opacity-50 backdrop-filter backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden"
       >
         <div className="p-8">
-          <h2 className="text-3xl font-bold mb-6 text-center text-gray-500">
+          <h2 className="text-3xl font-bold mb-6 text-center text-gray-500 dark:text-gray-300">
             Login
           </h2>
 
@@ -48,16 +51,16 @@ const LoginPage = () => {
             <div className="flex items-center mb-6">
               <Link
                   to="/forgot-password"
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Forgot password?
               </Link>
             </div>
             {error && <p className="text-red-500 font-semibold mb-2">{error}</p>}
 
-            <div className="px-8 py-4 bg-gray-200 bg-opacity-50 -mx-8 -mb-8">
+            <div className="px-8 py-4 bg-gray-200 dark:bg-gray-700 bg-opacity-50 -mx-8 -mb-8">
               <div className="flex justify-start mb-2">
-                <p className="text-sm text-gray-600">Don't have an account yet?</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Don't have an account yet?</p>
               </div>
               <div className="flex justify-between items-center">
                 <Link to="/signup">

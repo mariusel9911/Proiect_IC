@@ -1,15 +1,10 @@
-import {
-    LayoutGrid,
-    Users,
-    PackageOpen,
-    ShoppingCart,
-    Home,
-    Settings,
-    BarChart3
-} from 'lucide-react';
+import { LayoutGrid, Users, PackageOpen, ShoppingCart, Home, Settings, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useDarkMode } from '../../contexts/DarkModeContext'; // Update path as needed
 
 const AdminSidebar = ({ activePanel, setActivePanel }) => {
+    const { darkMode } = useDarkMode();
+
     const menuItems = [
         { id: 'services', name: 'Services', icon: <PackageOpen size={20} /> },
         { id: 'providers', name: 'Providers', icon: <Users size={20} /> },
@@ -21,8 +16,8 @@ const AdminSidebar = ({ activePanel, setActivePanel }) => {
 
     return (
         <div className="hidden md:flex md:flex-shrink-0">
-            <div className="flex flex-col w-64 bg-gray-800">
-                <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
+            <div className="flex flex-col w-64 bg-gray-800 dark:bg-gray-900">
+                <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900 dark:bg-black">
                     <div className="flex items-center justify-center w-10 h-10 bg-purple-600 rounded-lg">
                         <span className="text-white font-bold">C</span>
                     </div>
@@ -46,7 +41,7 @@ const AdminSidebar = ({ activePanel, setActivePanel }) => {
                                 onClick={() => setActivePanel(item.id)}
                                 className={`flex items-center px-2 py-2 text-sm font-medium rounded-md w-full ${
                                     activePanel === item.id
-                                        ? 'bg-gray-900 text-white'
+                                        ? 'bg-gray-900 text-white dark:bg-black'
                                         : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                                 }`}
                             >
@@ -57,7 +52,7 @@ const AdminSidebar = ({ activePanel, setActivePanel }) => {
                     </nav>
                 </div>
 
-                <div className="flex-shrink-0 flex bg-gray-700 p-4">
+                <div className="flex-shrink-0 flex bg-gray-700 dark:bg-gray-800 p-4">
                     <div className="flex items-center">
                         <div className="ml-3">
                             <p className="text-sm font-medium text-white">Admin Portal</p>
