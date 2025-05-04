@@ -37,10 +37,14 @@ const ProviderModal = ({ provider, services, onClose, onSave }) => {
       const serviceIds = [];
 
       provider.serviceOfferings?.forEach((offering) => {
+        // Add a null check for offering.service
+        if (!offering.service) return;
+
         const serviceId =
-            typeof offering.service === 'object'
+            typeof offering.service === 'object' && offering.service !== null
                 ? offering.service._id
                 : offering.service;
+
         serviceIds.push(serviceId);
 
         if (offering.options && offering.options.length > 0) {
@@ -51,7 +55,7 @@ const ProviderModal = ({ provider, services, onClose, onSave }) => {
             description: opt.description,
           }));
         } else {
-          const service = services.find((s) => s._id === serviceId);
+          const service = services?.find((s) => s && s._id === serviceId);
           if (service) {
             serviceOptions[serviceId] = service.options.map((option) => ({
               optionId: option._id,
