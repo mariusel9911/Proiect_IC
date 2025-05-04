@@ -10,7 +10,6 @@ const MaintenanceRouteGuard = () => {
     const isAdmin = user && user.isAdmin;
 
     // If maintenance mode is active and user is not an admin, show maintenance page
-    // This applies to both unauthenticated users and authenticated non-admin users
     if (isMaintenanceMode && !isAdmin) {
         return <MaintenancePage />;
     }
