@@ -16,7 +16,8 @@ export const maintenanceMode = async (req, res, next) => {
         ];
 
         // Allow these routes to bypass maintenance mode check
-        if (bypassRoutes.some(route => req.originalUrl.includes(route))) {
+        const normalizedUrl = req.originalUrl.split('?')[0].replace(/\/$/, '');
+        if (bypassRoutes.some(route => normalizedUrl === route)) {
             return next();
         }
 
