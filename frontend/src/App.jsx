@@ -20,7 +20,10 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 // Initialize stores
 import { useServiceStore } from './store/serviceStore';
 import { useProviderStore } from './store/providerStore';
+import { MaintenanceModeProvider } from './contexts/MaintenanceModeContext';
+import MaintenanceRouteGuard from './components/MaintenanceRouteGuard';
 import AdminDashboard from "./pages/Admin/AdminDashboard.jsx";
+import {DarkModeProvider} from "./contexts/DarkModeContext.jsx";
 
 // Protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -74,6 +77,8 @@ function App() {
     // console.log('user', user);
 
     return (
+        <DarkModeProvider>
+            <MaintenanceModeProvider>
         <div className="min-h-screen bg-gradient-to-tr from-gray-200 via-zinc-300 to-slate-50 flex items-center justify-center relative overflow-hidden">
             <Routes>
                 <Route
@@ -183,6 +188,9 @@ function App() {
             </Routes>
             <Toaster />
         </div>
+
+                </MaintenanceModeProvider>
+        </DarkModeProvider>
     );
 }
 
