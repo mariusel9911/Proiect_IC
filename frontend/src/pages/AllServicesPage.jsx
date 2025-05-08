@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Grid, Search } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
@@ -9,11 +9,25 @@ import toast from 'react-hot-toast';
 
 const AllServicesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { services, fetchServices, isLoading, error } = useServiceStore();
+  const { services, fetchServices, searchServices, isLoading, error } =
+    useServiceStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredServices, setFilteredServices] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
+  // Get search query from URL if present
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const queryFromUrl = queryParams.get('query');
+
+    if (queryFromUrl) {
+      setSearchQuery(queryFromUrl);
+    }
+  }, [location.search]);
+
+  // Initial fetch of services
   useEffect(() => {
     fetchServices();
   }, [fetchServices]);
@@ -24,18 +38,22 @@ const AllServicesPage = () => {
     }
   }, [error]);
 
+  // Filter services based on search query
   useEffect(() => {
-    if (services) {
-      setFilteredServices(
-        services.filter(
-          (service) =>
-            service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            service.type.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+    if (services && searchQuery) {
+      setIsSearching(true);
+      const filtered = services.filter(
+        (service) =>
+          service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          service.type.toLowerCase().includes(searchQuery.toLowerCase())
       );
+      setFilteredServices(filtered);
+      setIsSearching(false);
+    } else {
+      setFilteredServices(services || []);
     }
   }, [services, searchQuery]);
 
@@ -46,6 +64,28 @@ const AllServicesPage = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+
+    // If search is cleared, reset URL
+    if (!e.target.value.trim()) {
+      navigate('/all-services', { replace: true });
+    } else {
+      // Update URL with search query
+      navigate(`/all-services?query=${encodeURIComponent(e.target.value)}`, {
+        replace: true,
+      });
+    }
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+
+    if (!query.trim()) {
+      navigate('/all-services', { replace: true });
+    } else {
+      navigate(`/all-services?query=${encodeURIComponent(query)}`, {
+        replace: true,
+      });
+    }
   };
 
   // Group services by type
@@ -84,13 +124,17 @@ const AllServicesPage = () => {
             placeholder="Search services..."
             value={searchQuery}
             onChange={handleSearchChange}
+            onSearch={handleSearch}
           />
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-grow flex flex-col items-center py-8 px-4">
-        <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl p-6">
+      {/* Main Content - FIXED HEIGHT CONTAINER */}
+      <main className="flex-grow flex flex-col items-center py-8 px-4 w-full">
+        <div
+          className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl p-6"
+          style={{ height: '650px' }}
+        >
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
               All Services
@@ -101,82 +145,92 @@ const AllServicesPage = () => {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-60">
-              <LoadingSpinner />
-            </div>
-          ) : filteredServices.length > 0 ? (
-            <div className="space-y-8">
-              {Object.entries(groupedServices).map(([type, services]) => (
-                <div key={type} className="space-y-4">
-                  <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-200 pb-2">
-                    {type}
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {services.map((service) => (
-                      <Link
-                        to={`/service/${service._id}`}
-                        key={service._id}
-                        className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all bg-white p-4 flex flex-col"
-                      >
-                        <div className="flex items-center mb-3">
-                          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                            <Grid className="text-blue-600" />
+          {/* Content area with fixed height */}
+          <div className="overflow-auto" style={{ height: '550px' }}>
+            {isLoading || isSearching ? (
+              <div className="flex justify-center items-center h-full">
+                <LoadingSpinner
+                  text={
+                    searchQuery
+                      ? `Searching for "${searchQuery}"...`
+                      : 'Loading services...'
+                  }
+                />
+              </div>
+            ) : filteredServices.length > 0 ? (
+              <div className="space-y-8">
+                {Object.entries(groupedServices).map(([type, services]) => (
+                  <div key={type} className="space-y-4">
+                    <h2 className="text-xl font-semibold text-gray-700 border-b border-gray-200 pb-2">
+                      {type}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {services.map((service) => (
+                        <Link
+                          to={`/service/${service._id}`}
+                          key={service._id}
+                          className="border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all bg-white p-4 flex flex-col"
+                        >
+                          <div className="flex items-center mb-3">
+                            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                              <Grid className="text-blue-600" />
+                            </div>
+                            <h3 className="font-semibold text-lg">
+                              {service.name}
+                            </h3>
                           </div>
-                          <h3 className="font-semibold text-lg">
-                            {service.name}
-                          </h3>
-                        </div>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                          {service.description}
-                        </p>
-                        <div className="mt-auto">
-                          <span className="text-sm font-medium text-blue-600">
-                            {service.type}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            {service.description}
+                          </p>
+                          <div className="mt-auto">
+                            <span className="text-sm font-medium text-blue-600">
+                              {service.type}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Search size={40} className="text-gray-300" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-gray-500 mt-10">
-              <Search size={48} className="mb-4 text-gray-400" />
-              <p className="text-xl font-semibold mb-2">No services found</p>
-              <p className="text-center mb-6">
-                {searchQuery
-                  ? "We couldn't find any services matching your search."
-                  : 'There are no services available at the moment.'}
-              </p>
-            </div>
-          )}
+                <h2 className="text-xl font-medium mb-2 text-gray-700">
+                  No services found
+                </h2>
+                <p className="text-center text-gray-500 mb-6">
+                  {searchQuery
+                    ? `We couldn't find any services matching "${searchQuery}"`
+                    : 'There are no services available at the moment.'}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      navigate('/all-services', { replace: true });
+                    }}
+                    className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    View All Services
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
-      {/* Footer Wave */}
-      <div className="relative w-full overflow-hidden">
-        <svg
-          className="w-full h-24"
-          viewBox="0 0 1440 320"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
+      {/* Footer */}
+      <div className="w-full bg-white mt-8 p-6 shadow-md">
+        <Link
+          to="/"
+          className="text-blue-600 flex items-center justify-center font-semibold hover:text-purple-600 transition-colors"
         >
-          <path
-            fill="white"
-            d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
-          />
-        </svg>
-
-        <footer className="w-full bg-white text-center py-6 shadow-md">
-          <Link
-            to="/"
-            className="text-blue-600 flex items-center justify-center font-semibold hover:text-purple-600 transition-colors"
-          >
-            <ArrowLeft className="mr-2" /> Back to Home
-          </Link>
-        </footer>
+          <ArrowLeft className="mr-2" /> Back to Home
+        </Link>
       </div>
     </div>
   );

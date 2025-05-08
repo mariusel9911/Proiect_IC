@@ -37,8 +37,13 @@ const HomePage = () => {
     navigate('/login');
   };
 
-  const handleSearch = (e) => {
+  const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+  };
+
+  const handleSearch = (query) => {
+    // Navigate to all-services page with search query
+    navigate(`/all-services?query=${encodeURIComponent(query)}`);
   };
 
   // Calculate responsive values based on screen width
@@ -118,9 +123,10 @@ const HomePage = () => {
 
         <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-50">
           <SearchBar
-            placeholder="Search..."
+            placeholder="Search services..."
             value={searchQuery}
-            onChange={handleSearch}
+            onChange={handleSearchChange}
+            onSearch={handleSearch}
           />
         </div>
       </div>
