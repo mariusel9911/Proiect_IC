@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ServiceCircle from '../components/ServiceCircle';
 import SearchBar from '../components/SearchBar';
@@ -93,12 +93,12 @@ const HomePage = () => {
           </div>
           <div className="flex items-center gap-3">
             {user.isAdmin && (
-                <Link
-                    to="/admin/dashboard"
-                    className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
-                >
-                  Admin Dashboard
-                </Link>
+              <Link
+                to="/admin/dashboard"
+                className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+              >
+                Admin Dashboard
+              </Link>
             )}
 
             <Link
@@ -210,10 +210,10 @@ const HomePage = () => {
         {/* Footer */}
         <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[-30px] rounded-t-[30px]">
           <Link
-            to="/login"
+            to="/all-services"
             className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
           >
-            <ArrowLeft className="mr-2" /> Back to Login
+            View All Services <ArrowRight className="ml-2" />
           </Link>
         </footer>
       </div>
