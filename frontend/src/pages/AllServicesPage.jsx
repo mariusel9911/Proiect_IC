@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Grid, Search } from 'lucide-react';
+import {ArrowLeft, ArrowRight, Grid, Search} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
 import SearchBar from '../components/SearchBar';
@@ -99,32 +99,49 @@ const AllServicesPage = () => {
   }, {});
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex-col items-center justify-between">
       {/* Top bar */}
-      <div className="w-full bg-white flex flex-col">
-        <div className="w-full p-4 flex items-center shadow-md">
-          <Link to="/" className="text-blue-600 flex items-center mr-4">
-            <ArrowLeft className="mr-1" /> Back to Home
-          </Link>
-          <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-          <div className="flex-grow pl-6 text-gray-700 font-semibold">
+      <div className={'w-full bg-white flex flex-col'}>
+        <div
+            className={
+              'w-full p-3 bg-white shadow-lg flex justify-center items-center'
+            }
+        >
+          <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">
             My very special address...
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-all"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            {user.isAdmin && (
+                <Link
+                    to="/admin/dashboard"
+                    className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+                >
+                  Admin Dashboard
+                </Link>
+            )}
+
+            <Link
+                to="/orders"
+                className="hidden md:inline-block px-4 py-2 text-blue-600 border border-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
+            >
+              My Orders
+            </Link>
+            <button
+                onClick={handleLogout}
+                className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
-        {/* Search bar */}
-        <div className="w-full p-4 bg-white shadow sticky top-0 z-30">
+        <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-50">
           <SearchBar
-            placeholder="Search services..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            onSearch={handleSearch}
+              placeholder="Search services..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onSearch={handleSearch}
           />
         </div>
       </div>
@@ -223,14 +240,31 @@ const AllServicesPage = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <div className="w-full bg-white mt-8 p-6 shadow-md">
-        <Link
-          to="/"
-          className="text-blue-600 flex items-center justify-center font-semibold hover:text-purple-600 transition-colors"
-        >
-          <ArrowLeft className="mr-2" /> Back to Home
-        </Link>
+      <div className="relative w-full">
+        {/* SVG Arch */}
+        <div className="relative top left-0 w-full h-[100px] overflow-hidden z-10">
+          <svg
+              className="w-full h-full"
+              viewBox="0 0 1440 320"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="none"
+          >
+            <path
+                fill="white"
+                d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
+            />
+          </svg>
+        </div>
+
+        {/* Footer */}
+        <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[-30px] rounded-t-[30px]">
+          <Link
+              to="/"
+              className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
+          >
+            Back to Home <ArrowLeft className="ml-2" />
+          </Link>
+        </footer>
       </div>
     </div>
   );

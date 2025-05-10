@@ -1,5 +1,16 @@
 import mongoose from "mongoose";
 
+const addressSchema = new mongoose.Schema({
+    street: String,
+    city: String,
+    zipCode: String,
+    country: String,
+    coordinates: {
+        lat: Number,
+        lng: Number
+    }
+});
+
 const userSchema = new mongoose.Schema({
     email: {
         type: String,
@@ -8,11 +19,11 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required:true
+        required: true
     },
-    name:{
+    name: {
         type: String,
-        required:true
+        required: true
     },
     lastLogin: {
         type: Date,
@@ -26,10 +37,15 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isProvider: {
+        type: Boolean,
+        default: false
+    },
+    address: addressSchema,
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationToken: String,
     verificationTokenExpiresAt: Date,
-}, {timestamps:true});
+}, {timestamps: true});
 
 export const User = mongoose.model('User', userSchema);
