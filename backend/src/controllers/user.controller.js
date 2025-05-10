@@ -225,3 +225,73 @@ export const updateUserByAdmin = async (req, res) => {
         });
     }
 };
+
+// NEW ADDRESS METHODS
+
+// Get the user's saved address
+export const getUserAddress = async (req, res) => {
+    try {
+        const userId = req.userId;
+
+        const user = await User.findById(userId).select('address');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            address: user.address || null,
+        });
+    } catch (error) {
+        console.error('Error fetching user address:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching user address',
+        });
+    }
+};
+
+// Update the user's address
+export const updateUserAddress = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { address } = req.body;
+
+        if (!address) {
+            return res.status(400).json({
+                success: false,
+                message: 'Address is required',
+            });
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        // Update the address
+        user.address = address;
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Address updated successfully',
+            address: user.address,
+        });
+    } catch (error) {
+        console.error('Error updating user address:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating user address',
+        });
+    }
+};

@@ -1,31 +1,80 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
+import { Search, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const SearchBar = ({ placeholder }) => {
-    return (
-        <div className="relative w-5/6 text-center">
-            <div className="relative">
-                <input
-                    type="text"
-                    placeholder={placeholder}
-                    className="w-full py-2.5 pl-10 pr-4 border-2 border-gray-200 rounded-full focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg" // Increased padding and font size
-                />
-                <svg
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M21 21l-4.35-4.35M16.5 10.5A6 6 0 1110.5 4.5a6 6 0 016 6z"
-                    />
-                </svg>
-            </div>
-        </div>
-    );
+const SearchBar = ({
+  placeholder = 'Search...',
+  value = '',
+  onChange,
+  onSearch,
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Update local value when the passed value changes
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+
+    if (onChange) {
+      onChange(e);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (onSearch) {
+      onSearch(localValue);
+    } else {
+      // Default behavior: navigate to all-services with query param
+      navigate(`/all-services?query=${encodeURIComponent(localValue)}`);
+    }
+  };
+
+  const handleClear = () => {
+    setLocalValue('');
+    if (onChange) {
+      // Create a synthetic event to match the onChange interface
+      const syntheticEvent = { target: { value: '' } };
+      onChange(syntheticEvent);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto relative">
+      <div className="relative flex items-center">
+        <Search className="absolute left-4 text-gray-400" size={20} />
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={localValue || value}
+          onChange={handleChange}
+          className="w-full py-3 pl-12 pr-12 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {(localValue || value) && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-14 text-gray-400 hover:text-gray-600"
+          >
+            <X size={18} />
+          </button>
+        )}
+        <button
+          type="submit"
+          className="absolute right-3 bg-blue-600 text-white p-1 rounded-lg hover:bg-blue-700"
+        >
+          <Search size={20} />
+        </button>
+      </div>
+    </form>
+  );
 };
 
 export default SearchBar;

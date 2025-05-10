@@ -22,12 +22,16 @@ export const useServiceStore = create((set, get) => ({
           isLoading: false,
           error: null,
         });
+        return response.data.services;
       }
     } catch (error) {
+      console.error('Error fetching services:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Failed to fetch services',
+        services: [],
       });
+      return [];
     }
   },
 
@@ -47,6 +51,7 @@ export const useServiceStore = create((set, get) => ({
         return response.data.service;
       }
     } catch (error) {
+      console.error('Error fetching service:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Failed to fetch service',
@@ -57,22 +62,59 @@ export const useServiceStore = create((set, get) => ({
 
   // Search services
   searchServices: async (query) => {
+    if (!query || !query.trim()) {
+      // If query is empty, just fetch all services
+      return get().fetchServices();
+    }
+
     try {
       set({ isLoading: true, error: null });
 
-      const response = await axios.get(
-        `${API_URL}/services/search?query=${query}`
-      );
+      // First try to use the API search endpoint if it exists
+      try {
+        const response = await axios.get(
+          `${API_URL}/services/search?query=${encodeURIComponent(query)}`
+        );
 
-      if (response.data.success) {
+        if (response.data.success) {
+          set({
+            services: response.data.services,
+            isLoading: false,
+            error: null,
+          });
+          return response.data.services;
+        }
+      } catch (apiError) {
+        console.log(
+          'API search endpoint not available, falling back to client-side search'
+        );
+
+        // If API search fails, fall back to client-side filtering
+        // First make sure we have services loaded
+        let services = get().services;
+        if (!services.length) {
+          // If no services loaded yet, fetch them all first
+          services = await get().fetchServices();
+        }
+
+        // Now filter services client-side
+        const filteredServices = services.filter(
+          (service) =>
+            service.name.toLowerCase().includes(query.toLowerCase()) ||
+            service.description.toLowerCase().includes(query.toLowerCase()) ||
+            service.type.toLowerCase().includes(query.toLowerCase())
+        );
+
         set({
-          services: response.data.services,
           isLoading: false,
           error: null,
+          // Don't update the main services array when doing client-side filtering
         });
-        return response.data.services;
+
+        return filteredServices;
       }
     } catch (error) {
+      console.error('Search error:', error);
       set({
         isLoading: false,
         error: error.response?.data?.message || 'Search failed',
