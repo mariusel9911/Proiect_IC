@@ -217,6 +217,11 @@ const CheckoutPage = () => {
     ) {
       // Clear the container first to avoid potential rendering issues
       try {
+
+        if (paypalButtonRef.current) {
+          paypalButtonRef.current.style.position = 'relative';
+          paypalButtonRef.current.style.zIndex = '10';
+        }
         // Create the PayPal button
         const button = window.paypal.Buttons({
           // Set funding source - this can help with popup handling
