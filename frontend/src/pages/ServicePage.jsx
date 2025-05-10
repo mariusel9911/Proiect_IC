@@ -8,6 +8,8 @@ import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DebugView from '../components/DebugView'; // Import debug component
 import toast from 'react-hot-toast';
+import {useUserAddressStore} from "../store/userAddressStore.js";
+import LocationSelector from "../components/LocationSelector.jsx";
 
 const ServicePage = () => {
   const { serviceId } = useParams();
@@ -24,6 +26,12 @@ const ServicePage = () => {
     isLoading: providersLoading,
     error: providersError,
   } = useProviderStore();
+
+  const {
+    address,
+    updateUserAddress,
+    setAddressLocally
+  } = useUserAddressStore();
 
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -91,6 +99,14 @@ const ServicePage = () => {
     navigate('/login');
   };
 
+  const handleAddressSelect = (addressData, formattedAddr) => {
+    // Update the address in store
+    setAddressLocally(addressData, formattedAddr);
+
+    // Save to backend
+    updateUserAddress(addressData);
+  };
+
   const handleSearch = (e) => {
     setSearch(e.target.value);
   };
@@ -128,9 +144,11 @@ const ServicePage = () => {
               <ArrowLeft className="mr-1" /> Back
             </Link>
             <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-            <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">
-              My very special address...
-            </div>
+            {/* Replace the static address display with LocationSelector */}
+            <LocationSelector
+                initialAddress={address}
+                onSelectAddress={handleAddressSelect}
+            />
             <button
                 onClick={handleLogout}
                 className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
@@ -139,7 +157,7 @@ const ServicePage = () => {
             </button>
           </div>
 
-          <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-50">
+          <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-10">
             <SearchBar
                 placeholder="Search providers..."
                 value={search}
