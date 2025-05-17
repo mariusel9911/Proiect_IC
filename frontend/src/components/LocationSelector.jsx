@@ -102,21 +102,11 @@ const LocationSelector = ({ onSelectAddress, initialAddress, buttonClassName }) 
 
         loadGoogleMapsScript();
 
-        // Close modal when clicking outside
-        const handleClickOutside = (event) => {
-            if (modalRef.current && !modalRef.current.contains(event.target)) {
-                // Reset tempAddress to match fullAddress when closing
-                setTempAddress({...fullAddress});
-                setTempDisplayAddress(displayAddress);
-                setIsOpen(false);
-            }
-        };
+        // We're removing the click-outside-to-close behavior completely
+        // Now the modal will ONLY close when users click Cancel or X button
+        // This ensures autocomplete selections won't cause the modal to close
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [fullAddress, displayAddress]);
+    }, []);
 
     // Initialize map and autocomplete when modal opens
     useEffect(() => {

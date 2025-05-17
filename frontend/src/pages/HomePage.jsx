@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
 import { useUserAddressStore } from '../store/userAddressStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LogOut, ShoppingCart, LayoutDashboard } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ServiceCircle from '../components/ServiceCircle';
 import SearchBar from '../components/SearchBar';
@@ -15,7 +15,6 @@ const HomePage = () => {
   const {services, fetchServices, isLoading, error} = useServiceStore();
   const {
     address,
-    formattedAddress,
     fetchUserAddress,
     updateUserAddress,
     setAddressLocally
@@ -120,27 +119,34 @@ const HomePage = () => {
                 onSelectAddress={handleAddressSelect}
             />
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {user.isAdmin && (
                   <Link
                       to="/admin/dashboard"
-                      className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+                      className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+                      aria-label="Admin Dashboard"
+                      title="Admin Dashboard"
                   >
-                    Admin Dashboard
+                    <LayoutDashboard size={20} />
                   </Link>
               )}
 
               <Link
                   to="/orders"
-                  className="hidden md:inline-block px-4 py-2 text-blue-600 border border-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
+                  className="hidden md:flex items-center justify-center text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all"
+                  aria-label="My Orders"
+                  title="My Orders"
               >
-                My Orders
+                <ShoppingCart size={20} />
               </Link>
+
               <button
                   onClick={handleLogout}
-                  className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+                  className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+                  aria-label="Logout"
+                  title="Logout"
               >
-                Logout
+                <LogOut size={20} />
               </button>
             </div>
           </div>

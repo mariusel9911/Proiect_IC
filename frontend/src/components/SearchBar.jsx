@@ -68,7 +68,7 @@ const SearchBar = ({
         )}
         <button
           type="submit"
-          className="absolute right-3 bg-blue-600 text-white p-1 rounded-lg hover:bg-blue-700"
+          className="absolute right-3 bg-gray-400 text-white p-1 rounded-full hover:bg-gray-600"
         >
           <Search size={20} />
         </button>
