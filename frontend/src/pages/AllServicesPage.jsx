@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import {ArrowLeft, ArrowRight, Grid, Search} from 'lucide-react';
+import {
+  ArrowLeft,
+  LogOut,
+  ShoppingCart,
+  LayoutDashboard,
+  Grid,
+  Search,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
-import {useUserAddressStore} from "../store/userAddressStore.js";
-import LocationSelector from "../components/LocationSelector.jsx";
+import { useUserAddressStore } from '../store/userAddressStore.js';
+import LocationSelector from '../components/LocationSelector.jsx';
 
 const AllServicesPage = () => {
   const navigate = useNavigate();
@@ -15,11 +22,8 @@ const AllServicesPage = () => {
   const { user, logout } = useAuthStore();
   const { services, fetchServices, searchServices, isLoading, error } =
     useServiceStore();
-  const {
-    address,
-    updateUserAddress,
-    setAddressLocally
-  } = useUserAddressStore();
+  const { address, updateUserAddress, setAddressLocally } =
+    useUserAddressStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredServices, setFilteredServices] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -118,49 +122,68 @@ const AllServicesPage = () => {
       {/* Top bar */}
       <div className={'w-full bg-white flex flex-col'}>
         <div
-            className={
-              'w-full p-3 bg-white shadow-lg flex justify-center items-center'
-            }
+          className={
+            'w-full p-3 bg-white shadow-lg flex justify-center items-center'
+          }
         >
           <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-          {/* Replace the static address display with LocationSelector */}
+          {/* LocationSelector component */}
           <LocationSelector
-              initialAddress={address}
-              onSelectAddress={handleAddressSelect}
+            initialAddress={address}
+            onSelectAddress={handleAddressSelect}
           />
-          <div className="flex items-center gap-3">
+
+          {/* Using the same icon styling as HomePage */}
+          <div className="flex items-center gap-4">
             {user.isAdmin && (
-                <Link
-                    to="/admin/dashboard"
-                    className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 mr-2 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
-                >
-                  Admin Dashboard
-                </Link>
+              <Link
+                to="/admin/dashboard"
+                className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+                aria-label="Admin Dashboard"
+                title="Admin Dashboard"
+              >
+                <LayoutDashboard size={20} />
+              </Link>
             )}
 
             <Link
-                to="/orders"
-                className="hidden md:inline-block px-4 py-2 text-blue-600 border border-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
+              to="/orders"
+              className="hidden md:flex items-center justify-center text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all"
+              aria-label="My Orders"
+              title="My Orders"
             >
-              My Orders
+              <ShoppingCart size={20} />
             </Link>
+
             <button
-                onClick={handleLogout}
-                className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
+              onClick={handleLogout}
+              className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+              aria-label="Logout"
+              title="Logout"
             >
-              Logout
+              <LogOut size={20} />
             </button>
           </div>
         </div>
 
         <div className="w-full p-4 md:p-6 bg-white shadow-lg flex justify-center items-center px-4 md:px-12 sticky top-0 z-10">
           <SearchBar
-              placeholder="Search services..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onSearch={handleSearch}
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onSearch={handleSearch}
           />
         </div>
+      </div>
+
+      {/* Mobile-only orders link */}
+      <div className="md:hidden w-full flex justify-center mt-4">
+        <Link
+          to="/orders"
+          className="px-5 py-2 text-blue-600 bg-white rounded-lg shadow-md hover:bg-blue-50 transition-colors flex items-center"
+        >
+          View My Orders
+        </Link>
       </div>
 
       {/* Main Content - FIXED HEIGHT CONTAINER */}
@@ -261,14 +284,14 @@ const AllServicesPage = () => {
         {/* SVG Arch */}
         <div className="relative top left-0 w-full h-[100px] overflow-hidden z-10">
           <svg
-              className="w-full h-full"
-              viewBox="0 0 1440 320"
-              xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="none"
+            className="w-full h-full"
+            viewBox="0 0 1440 320"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
           >
             <path
-                fill="white"
-                d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
+              fill="white"
+              d="M0,224 C480,-40 960,-40 1440,224 L1440,320 L0,320 Z"
             />
           </svg>
         </div>
@@ -276,8 +299,8 @@ const AllServicesPage = () => {
         {/* Footer */}
         <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[-30px] rounded-t-[30px]">
           <Link
-              to="/"
-              className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
+            to="/"
+            className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"
           >
             Back to Home <ArrowLeft className="ml-2" />
           </Link>

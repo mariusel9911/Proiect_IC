@@ -7,6 +7,7 @@ import {
   X as XIcon,
   RefreshCcw,
   Trash2,
+  Edit,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAdminStore } from '../../store/adminStore';
@@ -15,23 +16,24 @@ import { useDarkMode } from '../../contexts/DarkModeContext';
 import DeleteConfirmModal from '../../components/modals/DeleteConfirmModal';
 
 const AdminOrdersPanel = () => {
-    const { darkMode } = useDarkMode();
-    const {
-        adminOrders,
-        isLoading,
-        error,
-        pagination,
-        setPagination,
-        fetchAdminOrders,
-        updateOrderStatus,
-        deleteOrder,
-    } = useAdminStore();
+  const { darkMode } = useDarkMode();
+  const {
+    adminOrders,
+    isLoading,
+    error,
+    pagination,
+    setPagination,
+    fetchAdminOrders,
+    updateOrderStatus,
+    deleteOrder,
+  } = useAdminStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
+  const [editingStatusOrderId, setEditingStatusOrderId] = useState(null);
 
   // Fetch orders when pagination or status filter changes
   useEffect(() => {
@@ -57,8 +59,17 @@ const AdminOrdersPanel = () => {
     try {
       await updateOrderStatus(orderId, status);
       toast.success(`Order status updated to ${status}`);
+      setEditingStatusOrderId(null); // Close the status editor after update
     } catch (error) {
       // Error is shown from the store effect
+    }
+  };
+
+  const toggleStatusEditor = (orderId) => {
+    if (editingStatusOrderId === orderId) {
+      setEditingStatusOrderId(null);
+    } else {
+      setEditingStatusOrderId(orderId);
     }
   };
 
@@ -166,7 +177,9 @@ const AdminOrdersPanel = () => {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Manage Orders</h2>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+            Manage Orders
+          </h2>
 
           <div className="mt-4 md:mt-0 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
             <div className="relative">
@@ -207,108 +220,150 @@ const AdminOrdersPanel = () => {
         </div>
       </div>
 
-            {isLoading ? (
-                <div className="p-6 text-center">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-solid border-purple-500 border-r-transparent"></div>
-                    <p className="mt-2 text-gray-500 dark:text-gray-400">Loading orders...</p>
-                </div>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
+      {isLoading ? (
+        <div className="p-6 text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-solid border-purple-500 border-r-transparent"></div>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Loading orders...
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Order ID
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Customer
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Service
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Total
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Date
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Payment
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Status
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                Actions
-                            </th>
-                        </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {filteredOrders.length === 0 ? (
-                            <tr>
-                                <td colSpan="8" className="px-4 py-4 text-center text-gray-500 dark:text-gray-400"
-                  >                  No orders found
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredOrders.map((order) => (
-                                <tr key={order._id}>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                        <span className="font-mono">{order._id?.slice(-8) || 'N/A'}</span>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                            {order.user?.name || 'Unknown User'}
-                                        </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {order.user?.email || 'No email'}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900 dark:text-white">
-                                            {order.service?.name || 'Unknown Service'}
-                                        </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {order.selectedOptions?.length || 0} options
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        €{order.grandTotal?.toFixed(2) || '0.00'}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900 dark:text-white">
-                                            {formatDate(order.createdAt)}
-                                        </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {formatDate(order.scheduledDate)}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}>
+                  Order ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Service
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Payment
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="8"
+                    className="px-4 py-4 text-center text-gray-500 dark:text-gray-400"
+                  >
+                    No orders found
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order._id}>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      <span className="font-mono">
+                        {order._id?.slice(-8) || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {order.user?.name || 'Unknown User'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {order.user?.email || 'No email'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {order.service?.name || 'Unknown Service'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {order.selectedOptions?.length || 0} options
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      €{order.grandTotal?.toFixed(2) || '0.00'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {formatDate(order.createdAt)}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDate(order.scheduledDate)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusColor(
+                          order.paymentStatus
+                        )}`}
+                      >
                         {order.paymentStatus || 'Unknown'}
-                    </span>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {order.paymentMethod || 'Unknown'}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status || 'Unknown'}
-                    </span>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={() => handleViewOrderDetails(order._id)}
-                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                                title="View Details"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                            {order.status === 'pending' && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(order._id, 'confirmed')}
-                                                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                      </span>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {order.paymentMethod || 'Unknown'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {editingStatusOrderId === order._id ? (
+                        <select
+                          className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                          value={order.status}
+                          onChange={(e) =>
+                            handleUpdateStatus(order._id, e.target.value)
+                          }
+                          autoFocus
+                          onBlur={() => setEditingStatusOrderId(null)}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                            order.status
+                          )}`}
+                        >
+                          {order.status || 'Unknown'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleViewOrderDetails(order._id)}
+                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          title="View Details"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => toggleStatusEditor(order._id)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="Edit Status"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() =>
+                              handleUpdateStatus(order._id, 'confirmed')
+                            }
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                             title="Confirm Order"
                           >
                             <Check size={18} />
@@ -319,7 +374,8 @@ const AdminOrdersPanel = () => {
                           <button
                             onClick={() =>
                               handleUpdateStatus(order._id, 'cancelled')
-                            }                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            }
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                             title="Cancel Order"
                           >
                             <XIcon size={18} />
@@ -327,7 +383,7 @@ const AdminOrdersPanel = () => {
                         )}
                         <button
                           onClick={() => handleDeleteClick(order)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                           title="Delete Order"
                         >
                           <Trash2 size={18} />

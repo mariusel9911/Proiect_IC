@@ -9,9 +9,13 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  LogOut,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useOrderStore } from '../store/orderStore';
+import { useUserAddressStore } from '../store/userAddressStore';
+import LocationSelector from '../components/LocationSelector';
 import toast from 'react-hot-toast';
 
 const OrderDetailsPage = () => {
@@ -26,6 +30,8 @@ const OrderDetailsPage = () => {
     error,
     message,
   } = useOrderStore();
+  const { address, updateUserAddress, setAddressLocally } =
+    useUserAddressStore();
 
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -33,6 +39,13 @@ const OrderDetailsPage = () => {
   useEffect(() => {
     fetchOrderById(orderId);
   }, [orderId, fetchOrderById]);
+
+  // Fetch user address
+  useEffect(() => {
+    if (typeof useUserAddressStore.getState().fetchUserAddress === 'function') {
+      useUserAddressStore.getState().fetchUserAddress();
+    }
+  }, []);
 
   useEffect(() => {
     // Clear existing notifications when component mounts
@@ -66,6 +79,13 @@ const OrderDetailsPage = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleAddressSelect = (addressData, formattedAddr) => {
+    // Update the address in store
+    setAddressLocally(addressData, formattedAddr);
+    // Save to backend
+    updateUserAddress(addressData);
   };
 
   const handleCancelOrder = async () => {
@@ -141,15 +161,30 @@ const OrderDetailsPage = () => {
             <ArrowLeft className="mr-1" /> Back
           </Link>
           <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-          <div className="w-3/4 py-2.5 text-center pl-12 pr-4 ml-8 mr-6">
-            My very special address...
+          <LocationSelector
+            initialAddress={address}
+            onSelectAddress={handleAddressSelect}
+          />
+          <div className="flex items-center gap-4">
+            {user && user.isAdmin && (
+              <Link
+                to="/admin/dashboard"
+                className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+                aria-label="Admin Dashboard"
+                title="Admin Dashboard"
+              >
+                <LayoutDashboard size={20} />
+              </Link>
+            )}
+            <button
+              onClick={handleLogout}
+              className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-blue-600 text-white px-4 py-2 md:px-8 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm md:text-base"
-          >
-            Logout
-          </button>
         </div>
       </div>
 
