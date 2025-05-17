@@ -12,12 +12,12 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useServiceStore } from '../store/serviceStore';
 import { useProviderStore } from '../store/providerStore';
+import { useUserAddressStore } from '../store/userAddressStore';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DebugView from '../components/DebugView'; // Import debug component
+import LocationSelector from '../components/LocationSelector';
 import toast from 'react-hot-toast';
-import { useUserAddressStore } from '../store/userAddressStore.js';
-import LocationSelector from '../components/LocationSelector.jsx';
 
 const ServicePage = () => {
   const { serviceId } = useParams();
@@ -365,7 +365,7 @@ const ServicePage = () => {
       </main>
 
       <div className="relative w-full">
-        <div className="absolute top-[-10px] left-0 w-full h-[100px] overflow-hidden z-10">
+        <div className="relative top left-0 w-full h-[100px] overflow-hidden z-10">
           <svg
             className="w-full h-full"
             viewBox="0 0 1440 320"
@@ -379,7 +379,7 @@ const ServicePage = () => {
           </svg>
         </div>
 
-        <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[60px] rounded-t-[30px]">
+        <footer className="w-full p-4 md:p-8 bg-white text-center shadow-lg flex flex-col items-center relative z-20 mt-[-30px] rounded-t-[30px]">
           <Link
             to="/"
             className="text-blue-600 flex items-center justify-center text-base md:text-xl font-semibold hover:text-purple-600 transition-colors"

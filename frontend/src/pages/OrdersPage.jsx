@@ -1,15 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Clock, CheckCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Package,
+  Clock,
+  CheckCircle,
+  LogOut,
+  LayoutDashboard,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useOrderStore } from '../store/orderStore';
+import { useUserAddressStore } from '../store/userAddressStore';
 import SearchBar from '../components/SearchBar';
+import LocationSelector from '../components/LocationSelector';
 import toast from 'react-hot-toast';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { orders, fetchUserOrders, isLoading, error } = useOrderStore();
+  const { address, updateUserAddress, setAddressLocally } =
+    useUserAddressStore();
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -26,6 +37,13 @@ const OrdersPage = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleAddressSelect = (addressData, formattedAddr) => {
+    // Update the address in store
+    setAddressLocally(addressData, formattedAddr);
+    // Save to backend
+    updateUserAddress(addressData);
   };
 
   const handleSearchChange = (e) => {
@@ -90,15 +108,31 @@ const OrdersPage = () => {
             <ArrowLeft className="mr-1" /> Back
           </Link>
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
-          <div className="flex-grow pl-6 text-gray-700 font-semibold">
-            My very special address...
+          <LocationSelector
+            initialAddress={address}
+            onSelectAddress={handleAddressSelect}
+          />
+          <div className="flex items-center gap-4">
+            {user.isAdmin && (
+              <Link
+                to="/admin/dashboard"
+                className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+                aria-label="Admin Dashboard"
+                title="Admin Dashboard"
+              >
+                <LayoutDashboard size={20} />
+              </Link>
+            )}
+            {/* No need for Orders link since we're already on the Orders page */}
+            <button
+              onClick={handleLogout}
+              className="bg-white text-gray-700 p-2 rounded-full hover:shadow-lg hover:bg-gray-300 transition-all flex items-center justify-center"
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-all"
-          >
-            Logout
-          </button>
         </div>
 
         {/* Search bar */}
