@@ -9,6 +9,7 @@ import ServiceCircle from '../components/ServiceCircle';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import LocationSelector from '../components/LocationSelector';
+import ProfileHeader from '../components/ProfileHeader';
 
 const HomePage = () => {
   const {user, logout} = useAuthStore();
@@ -110,12 +111,15 @@ const HomePage = () => {
                 'w-full p-3 bg-white shadow-lg flex justify-center items-center'
               }
           >
-            <div
-                className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
 
-            {/* Replace the static address display with LocationSelector */}
+          <ProfileHeader size="md" />
+
+          {/* Replace the static address display with LocationSelector */}
             <LocationSelector
-                initialAddress={address}
+                initialAddress={address ? {
+                  ...address,
+                  coordinates: address.coordinates || { lat: null, lng: null }
+                } : null}
                 onSelectAddress={handleAddressSelect}
             />
 

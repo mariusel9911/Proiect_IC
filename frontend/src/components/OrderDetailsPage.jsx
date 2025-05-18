@@ -127,7 +127,7 @@ const OrderDetailsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen w-screen bg-gradient-to-b from-blue-50 to-purple-50 flex items-center justify-center">
         <div className="p-8 bg-white rounded-xl shadow-lg text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-700">Loading order details...</p>
