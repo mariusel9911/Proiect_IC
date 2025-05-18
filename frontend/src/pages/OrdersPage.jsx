@@ -14,6 +14,7 @@ import { useUserAddressStore } from '../store/userAddressStore';
 import SearchBar from '../components/SearchBar';
 import LocationSelector from '../components/LocationSelector';
 import toast from 'react-hot-toast';
+import ProfileHeader from "../components/ProfileHeader.jsx";
 
 const OrdersPage = () => {
   const navigate = useNavigate();
@@ -107,10 +108,13 @@ const OrdersPage = () => {
           <Link to="/" className="text-blue-600 flex items-center mr-4">
             <ArrowLeft className="mr-1" /> Back
           </Link>
-          <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <ProfileHeader size="md" />
           <LocationSelector
-            initialAddress={address}
-            onSelectAddress={handleAddressSelect}
+              initialAddress={address ? {
+                ...address,
+                coordinates: address.coordinates || { lat: null, lng: null }
+              } : null}
+              onSelectAddress={handleAddressSelect}
           />
           <div className="flex items-center gap-4">
             {user.isAdmin && (

@@ -8,7 +8,8 @@ import {
     deleteUser,
     updateUserByAdmin,
     getUserAddress,
-    updateUserAddress
+    updateUserAddress,
+    updateUserProfile
 } from '../controllers/user.controller.js';
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.delete('/admin/:userId', verifyToken, isAdmin, deleteUser);
 // User address routes (authenticated but not admin-only)
 router.get('/address', verifyToken, getUserAddress);
 router.put('/address', verifyToken, updateUserAddress);
+router.put('/update-profile', verifyToken, updateUserProfile);
 
 export const userRoutes = router;

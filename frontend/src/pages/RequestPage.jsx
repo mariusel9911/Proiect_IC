@@ -16,6 +16,7 @@ import LocationSelector from '../components/LocationSelector';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import ProfileHeader from "../components/ProfileHeader.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -233,10 +234,13 @@ const RequestPage = () => {
           >
             <ArrowLeft className="mr-1" /> Back
           </Link>
-          <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <ProfileHeader size="md" />
           <LocationSelector
-            initialAddress={address}
-            onSelectAddress={handleAddressSelect}
+              initialAddress={address ? {
+                ...address,
+                coordinates: address.coordinates || { lat: null, lng: null }
+              } : null}
+              onSelectAddress={handleAddressSelect}
           />
           <div className="flex items-center gap-4">
             {user.isAdmin && (

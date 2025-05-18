@@ -295,3 +295,40 @@ export const updateUserAddress = async (req, res) => {
         });
     }
 };
+
+export const updateUserProfile = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { name, phone } = req.body;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        // Update the user info
+        if (name) user.name = name;
+        if (phone) user.phone = phone;
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                ...user._doc,
+                password: undefined
+            },
+        });
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating user profile',
+        });
+    }
+};

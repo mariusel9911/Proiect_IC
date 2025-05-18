@@ -10,7 +10,8 @@ import RequestPage from './pages/RequestPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailsPage from './components/OrderDetailsPage';
 import MaintenancePage from './components/MaintenancePage';
-import AllServicesPage from './pages/AllServicesPage'; // Import the new page
+import AllServicesPage from './pages/AllServicesPage';
+import ProfilePage from './pages/ProfilePage';
 
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -160,6 +161,16 @@ function App() {
                 </AdminRoute>
               }
             />
+
+            {/* Profile Page - Add this new route */}
+              <Route
+                  path="/profile"
+                  element={
+                      <ProtectedRoute>
+                          <ProfilePage />
+                      </ProtectedRoute>
+                  }
+              />
 
             {/* Protected routes with maintenance check */}
             <Route
