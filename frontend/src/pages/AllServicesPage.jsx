@@ -15,6 +15,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { useUserAddressStore } from '../store/userAddressStore.js';
 import LocationSelector from '../components/LocationSelector.jsx';
+import ProfileHeader from "../components/ProfileHeader.jsx";
 
 const AllServicesPage = () => {
   const navigate = useNavigate();
@@ -126,11 +127,14 @@ const AllServicesPage = () => {
             'w-full p-3 bg-white shadow-lg flex justify-center items-center'
           }
         >
-          <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <ProfileHeader size="md" />
           {/* LocationSelector component */}
           <LocationSelector
-            initialAddress={address}
-            onSelectAddress={handleAddressSelect}
+              initialAddress={address ? {
+                ...address,
+                coordinates: address.coordinates || { lat: null, lng: null }
+              } : null}
+              onSelectAddress={handleAddressSelect}
           />
 
           {/* Using the same icon styling as HomePage */}
