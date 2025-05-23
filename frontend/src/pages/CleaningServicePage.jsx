@@ -17,6 +17,7 @@ import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DebugView from '../components/DebugView'; // Import debug component
 import LocationSelector from '../components/LocationSelector';
+import ProfileHeader from '../components/ProfileHeader';
 import toast from 'react-hot-toast';
 
 const CleaningServicePage = () => {
@@ -306,13 +307,23 @@ const CleaningServicePage = () => {
               onClick={handleBackToOptions}
               className="text-blue-600 flex items-center mr-4"
             >
-              <ArrowLeft className="mr-1" /> Back to Options
+              <ArrowLeft className="mr-1" /> Back
             </button>
           )}
-          <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg shadow-md"></div>
+          <ProfileHeader size="md" />
           {/* Replace the static address display with LocationSelector */}
           <LocationSelector
-            initialAddress={address}
+            initialAddress={
+              address
+                ? {
+                    ...address,
+                    coordinates: address.coordinates || {
+                      lat: null,
+                      lng: null,
+                    },
+                  }
+                : null
+            }
             onSelectAddress={handleAddressSelect}
           />
           <div className="flex items-center gap-4">
