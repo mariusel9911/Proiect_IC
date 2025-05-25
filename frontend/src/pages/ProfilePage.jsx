@@ -8,6 +8,9 @@ import {
   ChevronLeft,
   ExternalLink,
   X,
+  Shield,
+  Trash2,
+  Key,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -18,7 +21,8 @@ import toast from 'react-hot-toast';
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuthStore();
-  const { updateUserProfile } = useUserStore();
+  const { updateUserProfile, deleteUserAccount, requestPasswordReset } =
+    useUserStore();
   const { updateUserAddress } = useUserAddressStore();
   const [activeTab, setActiveTab] = useState('account');
   const [user, setUser] = useState({
@@ -34,6 +38,13 @@ const ProfilePage = () => {
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Update user state from auth store when available
   useEffect(() => {
@@ -186,6 +197,45 @@ const ProfilePage = () => {
       toast.error('An error occurred while updating profile');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle password reset request
+  const handlePasswordReset = async () => {
+    setIsResettingPassword(true);
+    try {
+      await requestPasswordReset(user.email);
+      toast.success('Password reset email sent! Check your inbox.');
+      setShowPasswordResetModal(false);
+    } catch (error) {
+      toast.error('Failed to send password reset email');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      toast.error('Please enter your password to confirm deletion');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteUserAccount(deletePassword);
+      toast.success('Account deleted successfully');
+
+      // Clear local storage
+      localStorage.clear();
+
+      // Logout and redirect
+      logout();
+      navigate('/signup');
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -495,51 +545,33 @@ const ProfilePage = () => {
 
                   <div className="space-y-6">
                     <div>
-                      <h4 className="font-medium mb-3">
-                        Notification Preferences
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id="email-notifications"
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label
-                            htmlFor="email-notifications"
-                            className="ml-2 block text-gray-700"
-                          >
-                            Email notifications
-                          </label>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id="sms-notifications"
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label
-                            htmlFor="sms-notifications"
-                            className="ml-2 block text-gray-700"
-                          >
-                            SMS notifications
-                          </label>
-                        </div>
+                      <h4 className="font-medium mb-3">Security</h4>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowPasswordResetModal(true)}
+                          className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Change Password
+                        </button>
                       </div>
                     </div>
 
-                    <div>
-                      <h4 className="font-medium mb-3">Password</h4>
-                      <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-                        Change Password
-                      </button>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-3">Account Management</h4>
-                      <button className="px-4 py-2 border border-red-300 rounded-md text-red-600 hover:bg-red-50 transition-colors">
+                    <div className="border-t pt-6">
+                      <h4 className="font-medium mb-3 text-red-600">
+                        Danger Zone
+                      </h4>
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="flex items-center px-4 py-2 border border-red-300 rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete Account
                       </button>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This action cannot be undone. This will permanently
+                        delete your account and all associated data.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -548,6 +580,140 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {showPasswordResetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold flex items-center">
+                <Key className="h-5 w-5 mr-2 text-blue-600" />
+                Reset Password
+              </h3>
+              <button
+                onClick={() => setShowPasswordResetModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                We'll send a password reset link to your email address:{' '}
+                <strong>{user.email}</strong>
+              </p>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowPasswordResetModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  disabled={isResettingPassword}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePasswordReset}
+                  disabled={isResettingPassword}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isResettingPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold flex items-center text-red-600">
+                <Trash2 className="h-5 w-5 mr-2" />
+                Delete Account
+              </h3>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                <div className="flex">
+                  <Shield className="h-5 w-5 text-red-400 mr-2 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-medium text-red-800">
+                      This action cannot be undone
+                    </h4>
+                    <p className="text-sm text-red-700 mt-1">
+                      This will permanently delete your account, all your
+                      orders, and personal data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your password to confirm deletion:
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Enter your current password"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || !deletePassword.trim()}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Account
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Order Summary Modal */}
       {selectedOrder && (
