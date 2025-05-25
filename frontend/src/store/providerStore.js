@@ -81,7 +81,7 @@ export const useProviderStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      console.log(`Fetching providers for service ID: ${serviceId}`);
+      // console.log(`Fetching providers for service ID: ${serviceId}`);
 
       const response = await axios.get(
           `${API_URL}/providers/service/${serviceId}`
@@ -89,7 +89,7 @@ export const useProviderStore = create((set, get) => ({
 
       if (response.data.success) {
         console.log(
-            `Received ${response.data.providers.length} providers for service`
+            // `Received ${response.data.providers.length} providers for service`
         );
 
         // Store the providers directly as returned from API

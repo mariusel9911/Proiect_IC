@@ -16,8 +16,8 @@ export const useProviderOptions = (provider, service) => {
 
         try {
             setIsProcessing(true);
-            console.log('Processing provider options:', provider);
-            console.log('Service data:', service);
+            // console.log('Processing provider options:', provider);
+            // console.log('Service data:', service);
 
             let options = [];
 
@@ -80,8 +80,8 @@ export const useProviderOptions = (provider, service) => {
                 });
             }
 
-            console.log('Processed options:', options);
-            setProcessedOptions(options);
+            // console.log('Processed options:', options);
+            setProcessedOptions(options);z
             setIsProcessing(false);
         } catch (error) {
             console.error('Error processing provider options:', error);

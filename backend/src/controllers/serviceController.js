@@ -46,20 +46,20 @@ export const getServiceById = async (req, res) => {
 // In serviceController.js
 export const createService = async (req, res) => {
   try {
-    console.log('=== CREATE SERVICE START ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User object:', req.user);
-    console.log('Is admin?', req.user?.isAdmin);
+    // console.log('=== CREATE SERVICE START ===');
+    // console.log('Request body:', JSON.stringify(req.body, null, 2));
+    // console.log('User object:', req.user);
+    // console.log('Is admin?', req.user?.isAdmin);
 
     const { name, description, type, price, options } = req.body;
 
     // Log what we received
-    console.log('Extracted values:');
-    console.log('- name:', name);
-    console.log('- description:', description);
-    console.log('- type:', type);
-    console.log('- price:', price);
-    console.log('- options:', JSON.stringify(options, null, 2));
+    // console.log('Extracted values:');
+    // console.log('- name:', name);
+    // console.log('- description:', description);
+    // console.log('- type:', type);
+    // console.log('- price:', price);
+    // console.log('- options:', JSON.stringify(options, null, 2));
 
     // Validate required fields
     if (!name || !description || !type || !options || !Array.isArray(options)) {
@@ -72,14 +72,14 @@ export const createService = async (req, res) => {
 
     // Check if user is admin
     if (!req.user?.isAdmin) {
-      console.log('Admin check failed');
+      // console.log('Admin check failed');
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Admin access required',
       });
     }
 
-    console.log('Creating new service with data:');
+    // console.log('Creating new service with data:');
     const serviceData = {
       name,
       description,
@@ -91,9 +91,9 @@ export const createService = async (req, res) => {
 
     const service = new Service(serviceData);
 
-    console.log('Saving service to database...');
+    // console.log('Saving service to database...');
     await service.save();
-    console.log('Service saved successfully:', service._id);
+    // console.log('Service saved successfully:', service._id);
 
     res.status(201).json({
       success: true,
@@ -101,12 +101,12 @@ export const createService = async (req, res) => {
       service,
     });
 
-    console.log('=== CREATE SERVICE END ===');
+    // console.log('=== CREATE SERVICE END ===');
   } catch (error) {
-    console.error('=== CREATE SERVICE ERROR ===');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    // console.error('=== CREATE SERVICE ERROR ===');
+    // console.error('Error name:', error.name);
+    // console.error('Error message:', error.message);
+    // console.error('Error stack:', error.stack);
 
     // If it's a Mongoose validation error, log the details
     if (error.name === 'ValidationError') {
