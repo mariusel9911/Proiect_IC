@@ -15,7 +15,7 @@ export const createOrder = async (req, res) => {
       scheduledDate,
       timeSlot,
       paymentMethod,
-      paypalOrderId, // New field for PayPal
+      paypalOrderId,
     } = req.body;
 
     console.log('💻 Create Order Request:');
@@ -243,7 +243,7 @@ export const updatePaymentStatus = async (req, res) => {
 // Update getOrderById function in orderController.js
 export const getOrderById = async (req, res) => {
   try {
-    const orderId = req.params.id; // Using 'id' as the parameter name
+    const orderId = req.params.id;
     console.log('Getting order details for ID:', orderId);
 
     const order = await Order.findById(orderId)
@@ -573,7 +573,6 @@ export const getAdminOrders = async (req, res) => {
   }
 };
 
-// In orderController.js - add this function
 export const deleteOrder = async (req, res) => {
   try {
     const { orderId } = req.params;

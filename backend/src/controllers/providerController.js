@@ -43,7 +43,6 @@ export const getAllProviders = async (req, res) => {
 };
 
 // Get provider by ID
-// In providerController.js - getProviderById
 export const getProviderById = async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -73,7 +72,6 @@ export const getProviderById = async (req, res) => {
           return offering;
         }
 
-        // Create deep copy of service to avoid modifying the original
         const processedService = {
           ...service.toObject(),
           options: service.options.map((option) => {
@@ -84,11 +82,10 @@ export const getProviderById = async (req, res) => {
             );
 
             if (providerOption) {
-              // Make sure all required fields are present
               return {
                 _id: option._id,
                 name: providerOption.name || option.name,
-                icon: option.icon, // Always use service's icon
+                icon: option.icon,
                 price: providerOption.price
                   ? `€${providerOption.price}`
                   : option.price,
@@ -114,7 +111,6 @@ export const getProviderById = async (req, res) => {
       }
     );
 
-    // Replace original serviceOfferings with processed ones
     const processedProvider = {
       ...provider.toObject(),
       serviceOfferings: processedServiceOfferings,
@@ -169,7 +165,6 @@ export const getProvidersForService = async (req, res) => {
             return null;
           }
 
-          // Process options with price formatting - with added null checks
           const processedOptions =
             service.options
               ?.map((serviceOption) => {
@@ -199,7 +194,7 @@ export const getProvidersForService = async (req, res) => {
                       id: serviceOption._id,
                       name: serviceOption.name,
                       icon: serviceOption.icon || '🧹', // Default icon if missing
-                      price: `€${providerOption.price}`, // Format price with Euro symbol
+                      price: `€${providerOption.price}`,
                       priceValue: Number(providerOption.price) || 0,
                       description: serviceOption.description || '',
                     };
@@ -222,7 +217,7 @@ export const getProvidersForService = async (req, res) => {
                   return null;
                 }
               })
-              .filter(Boolean) || []; // Remove nulls and handle missing options array
+              .filter(Boolean) || [];
 
           return {
             _id: provider._id,
@@ -383,7 +378,7 @@ export const createProvider = async (req, res) => {
     });
   }
 };
-// In providerController.js - updateProvider
+
 export const updateProvider = async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -405,7 +400,6 @@ export const updateProvider = async (req, res) => {
     const user = await User.findById(req.userId);
     const isAdmin = user?.isAdmin || false;
 
-    // Check permissions - handle case where provider.user might be undefined
     const isOwner = provider.user && provider.user.toString() === req.userId;
 
     console.log('Is admin:', isAdmin);
@@ -558,7 +552,6 @@ export const addProviderReview = async (req, res) => {
   }
 };
 
-// In providerController.js
 export const deleteProvider = async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -568,7 +561,6 @@ export const deleteProvider = async (req, res) => {
     console.log('User:', req.user);
     console.log('Is Admin?', req.user?.isAdmin);
 
-    // Find the provider first
     const provider = await Provider.findById(providerId);
 
     if (!provider) {
