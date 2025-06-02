@@ -16,7 +16,7 @@ import LocationSelector from '../components/LocationSelector';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import ProfileHeader from "../components/ProfileHeader.jsx";
+import ProfileHeader from '../components/ProfileHeader.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -59,7 +59,6 @@ const RequestPage = () => {
 
     // If we already have the service data from the location state, use it
     if (initialService) {
-      // console.log('Using service from location state:', initialService);
       setService(initialService);
       setSelectedOptions(initialSelectedOptions);
       setIsLoading(false);
@@ -69,14 +68,11 @@ const RequestPage = () => {
     // Otherwise, fetch from the API
     const fetchServiceData = async () => {
       try {
-        // console.log('Fetching service data from API for ID:', serviceId);
         const serviceData = await fetchServiceById(serviceId);
 
         if (!serviceData) {
           throw new Error('Service not found');
         }
-
-        // console.log('Service data fetched:', serviceData);
 
         setService(serviceData);
         setSelectedOptions(initialSelectedOptions);
@@ -236,11 +232,18 @@ const RequestPage = () => {
           </Link>
           <ProfileHeader size="md" />
           <LocationSelector
-              initialAddress={address ? {
-                ...address,
-                coordinates: address.coordinates || { lat: null, lng: null }
-              } : null}
-              onSelectAddress={handleAddressSelect}
+            initialAddress={
+              address
+                ? {
+                    ...address,
+                    coordinates: address.coordinates || {
+                      lat: null,
+                      lng: null,
+                    },
+                  }
+                : null
+            }
+            onSelectAddress={handleAddressSelect}
           />
           <div className="flex items-center gap-4">
             {user.isAdmin && (

@@ -60,16 +60,9 @@ const CleaningServicePage = () => {
   // Use processed options when available
   useEffect(() => {
     if (!isProcessing && processedOptions.length > 0) {
-      console.log('Setting processed options:', processedOptions);
       setServiceOptions(processedOptions);
     }
   }, [processedOptions, isProcessing]);
-
-  // Debug location state
-  useEffect(() => {
-    console.log('Location state:', location.state);
-    console.log('Provider from state:', provider);
-  }, [location.state, provider]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -132,8 +125,6 @@ const CleaningServicePage = () => {
         return;
       }
 
-      console.log('Processing service:', service);
-      console.log('Provider data:', provider);
       setSelectedService(service);
 
       // If provider is available, store it in checkout store
@@ -147,11 +138,9 @@ const CleaningServicePage = () => {
 
     // If the provider passed service info, use that
     if (provider && provider.service) {
-      console.log('Using service from provider:', provider.service);
       processService(provider.service);
     } else {
       // Otherwise fetch from API
-      console.log('Fetching service from API:', serviceId);
       fetchServiceById(serviceId)
         .then((service) => {
           if (service) {
@@ -191,14 +180,12 @@ const CleaningServicePage = () => {
   const handleIncrement = (optionId) => {
     // Make sure optionId is a string
     const id = String(optionId);
-    console.log('Incrementing option:', id);
     updateSelectedOption(id, (selectedOptions[id] || 0) + 1);
   };
 
   const handleDecrement = (optionId) => {
     // Make sure optionId is a string
     const id = String(optionId);
-    console.log('Decrementing option:', id);
     if (selectedOptions[id] > 0) {
       updateSelectedOption(id, selectedOptions[id] - 1);
     }
@@ -250,9 +237,6 @@ const CleaningServicePage = () => {
         price = parseFloat(priceString) || 0;
       }
 
-      console.log(
-        `Option ${option.name}, price: ${option.price}, priceValue: ${option.priceValue}, parsed: ${price}, quantity: ${quantity}`
-      );
       return total + price * quantity;
     }, 0);
   };

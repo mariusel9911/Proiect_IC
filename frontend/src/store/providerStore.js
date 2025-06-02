@@ -20,7 +20,7 @@ export const useProviderStore = create((set, get) => ({
       if (filters.search) queryParams.append('search', filters.search);
 
       const response = await axios.get(
-          `${API_URL}/providers?${queryParams.toString()}`
+        `${API_URL}/providers?${queryParams.toString()}`
       );
 
       if (response.data.success) {
@@ -32,7 +32,7 @@ export const useProviderStore = create((set, get) => ({
         return response.data.providers;
       } else {
         throw new Error(
-            'Failed to fetch providers: API returned no success flag'
+          'Failed to fetch providers: API returned no success flag'
         );
       }
     } catch (error) {
@@ -62,7 +62,7 @@ export const useProviderStore = create((set, get) => ({
         return response.data.provider;
       } else {
         throw new Error(
-            'Failed to fetch provider: API returned no success flag'
+          'Failed to fetch provider: API returned no success flag'
         );
       }
     } catch (error) {
@@ -81,30 +81,24 @@ export const useProviderStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // console.log(`Fetching providers for service ID: ${serviceId}`);
-
       const response = await axios.get(
-          `${API_URL}/providers/service/${serviceId}`
+        `${API_URL}/providers/service/${serviceId}`
       );
 
       if (response.data.success) {
-        console.log(
-            // `Received ${response.data.providers.length} providers for service`
-        );
-
         // Store the providers directly as returned from API
         // The price formatting should now be handled server-side
 
         // Debug log for price formats
-        response.data.providers.forEach(provider => {
+        response.data.providers.forEach((provider) => {
           if (provider.options && provider.options.length > 0) {
             console.log(
-                `Provider ${provider.name} options:`,
-                provider.options.map(opt => ({
-                  name: opt.name,
-                  price: opt.price,
-                  priceValue: opt.priceValue
-                }))
+              `Provider ${provider.name} options:`,
+              provider.options.map((opt) => ({
+                name: opt.name,
+                price: opt.price,
+                priceValue: opt.priceValue,
+              }))
             );
           }
         });
@@ -115,17 +109,16 @@ export const useProviderStore = create((set, get) => ({
           error: null,
         });
 
-        console.log('Formatted providers:', response.data.providers);
         return response.data.providers;
       } else {
         throw new Error(
-            'Failed to fetch providers: API returned no success flag'
+          'Failed to fetch providers: API returned no success flag'
         );
       }
     } catch (error) {
       console.error(
-          'Error fetching service providers from API:',
-          error.message
+        'Error fetching service providers from API:',
+        error.message
       );
       console.error('Error details:', error);
 
@@ -133,7 +126,7 @@ export const useProviderStore = create((set, get) => ({
         providers: [],
         isLoading: false,
         error:
-            error.response?.data?.message || 'Failed to fetch service providers',
+          error.response?.data?.message || 'Failed to fetch service providers',
       });
 
       return [];
@@ -146,9 +139,9 @@ export const useProviderStore = create((set, get) => ({
       set({ isLoading: true, error: null });
 
       const response = await axios.post(
-          `${API_URL}/providers/${providerId}/reviews`,
-          reviewData,
-          { withCredentials: true }
+        `${API_URL}/providers/${providerId}/reviews`,
+        reviewData,
+        { withCredentials: true }
       );
 
       if (response.data.success) {

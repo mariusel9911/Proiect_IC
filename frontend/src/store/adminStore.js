@@ -65,8 +65,6 @@ export const useAdminStore = create((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      console.log('Sending service data to API:', serviceData);
-
       const response = await axios.post(`${API_URL}/services`, serviceData, {
         withCredentials: true,
       });

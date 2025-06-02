@@ -22,7 +22,7 @@ import LocationSelector from '../components/LocationSelector';
 import LocationMap from '../components/LocationMap';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ProfileHeader from "../components/ProfileHeader.jsx";
+import ProfileHeader from '../components/ProfileHeader.jsx';
 
 const CheckoutPage = () => {
   const location = useLocation();
@@ -151,14 +151,12 @@ const CheckoutPage = () => {
       }
 
       const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-      console.log('Using PayPal client ID:', PAYPAL_CLIENT_ID);
 
       const script = document.createElement('script');
       script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=EUR`;
       script.async = true;
 
       script.onload = () => {
-        console.log('PayPal SDK loaded successfully');
         setPaypalLoaded(true);
       };
 
@@ -256,7 +254,6 @@ const CheckoutPage = () => {
               // Store order reference
               setCreatedOrder(order);
               localStorage.setItem('currentOrder', JSON.stringify(order));
-              console.log('Order created and stored:', order);
 
               // Return actions for PayPal to create order
               return actions.order.create({
@@ -283,9 +280,7 @@ const CheckoutPage = () => {
           // Payment approval handler
           onApprove: async (data, actions) => {
             try {
-              console.log('Payment approved, capturing funds...');
               const captureResult = await actions.order.capture();
-              console.log('Capture result:', captureResult);
 
               // Get order reference - from state or localStorage
               let orderRef = createdOrder;
@@ -402,7 +397,6 @@ const CheckoutPage = () => {
         button
           .render(paypalButtonRef.current)
           .then(() => {
-            console.log('PayPal button rendered successfully');
             setPaypalButtonRendered(true);
           })
           .catch((err) => {
@@ -586,9 +580,6 @@ const CheckoutPage = () => {
         return;
       }
 
-      // Debug log
-      console.log('Submitting order data:', JSON.stringify(orderData, null, 2));
-
       // Create order in backend
       const order = await createOrder(orderData);
 
@@ -643,11 +634,18 @@ const CheckoutPage = () => {
           </Link>
           <ProfileHeader size="md" />
           <LocationSelector
-              initialAddress={address ? {
-                ...address,
-                coordinates: address.coordinates || { lat: null, lng: null }
-              } : null}
-              onSelectAddress={handleAddressSelect}
+            initialAddress={
+              address
+                ? {
+                    ...address,
+                    coordinates: address.coordinates || {
+                      lat: null,
+                      lng: null,
+                    },
+                  }
+                : null
+            }
+            onSelectAddress={handleAddressSelect}
           />
           <div className="flex items-center gap-4">
             {user.isAdmin && (

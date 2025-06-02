@@ -18,7 +18,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import DebugView from '../components/DebugView'; // Import debug component
 import LocationSelector from '../components/LocationSelector';
 import toast from 'react-hot-toast';
-import ProfileHeader from "../components/ProfileHeader.jsx";
+import ProfileHeader from '../components/ProfileHeader.jsx';
 
 const ServicePage = () => {
   const { serviceId } = useParams();
@@ -75,7 +75,6 @@ const ServicePage = () => {
 
   // Fetch service data
   useEffect(() => {
-    console.log('Fetching service with ID:', serviceId);
     fetchServiceById(serviceId);
     fetchProvidersForService(serviceId);
 
@@ -117,12 +116,6 @@ const ServicePage = () => {
     setSearch(e.target.value);
   };
 
-  // Add debug logs
-  useEffect(() => {
-    console.log('Current service:', currentService);
-    console.log('Providers:', providers);
-  }, [currentService, providers]);
-
   const filteredProviders = providers.filter((provider) => {
     const matchesSearch =
       provider.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -153,11 +146,18 @@ const ServicePage = () => {
 
           {/* Replace the static address display with LocationSelector */}
           <LocationSelector
-              initialAddress={address ? {
-                ...address,
-                coordinates: address.coordinates || { lat: null, lng: null }
-              } : null}
-              onSelectAddress={handleAddressSelect}
+            initialAddress={
+              address
+                ? {
+                    ...address,
+                    coordinates: address.coordinates || {
+                      lat: null,
+                      lng: null,
+                    },
+                  }
+                : null
+            }
+            onSelectAddress={handleAddressSelect}
           />
 
           {/* Updated icon-based buttons consistent with HomePage */}
